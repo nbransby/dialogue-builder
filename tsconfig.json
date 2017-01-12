@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "es5",
+        "lib": [
+            "es5",
+            "es6"
+        ],
+        "declaration": true,
+        "pretty": true,
+        "sourceMap": true,
+        "strictNullChecks": true,
+        "alwaysStrict": true,
+        "allowUnreachableCode": false,
+        "allowSyntheticDefaultImports": false,
+        "allowUnusedLabels": false,
+        "preserveConstEnums": true,
+        "noUnusedParameters": false,
+        "noUnusedLocals": true,
+        "noImplicitThis": true,
+        "noImplicitReturns": true,
+        "noImplicitAny": true
+    }
+}

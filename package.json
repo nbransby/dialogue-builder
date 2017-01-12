@@ -1,0 +1,34 @@
+{
+  "name": "dialogue-builder",
+  "version": "0.1.0",
+  "description": "Beautifuly readable static dialogue - great for simple bots or an onboarding flow",
+  "main": "dialog-builder.js",
+  "dependencies": {
+    "claudia-bot-builder": "^2.11.0"
+  },
+  "devDependencies": {
+    "@types/jasmine": "^2.5.40",
+    "jasmine": "^2.5.2",
+    "typescript": "^2.1.4"
+  },  
+  "scripts": {
+    "test": "tsc && jasmine JASMINE_CONFIG_PATH=jasmine.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nbransby/dialogue-builder.git"
+  },
+  "keywords": [
+    "bot",
+    "bot-builder",
+    "lambda",
+    "serverless",
+    "claudia.js"
+  ],
+  "author": "Nicholas Bransby-Williams",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/nbransby/dialogue-builder/issues"
+  },
+  "homepage": "https://github.com/nbransby/dialogue-builder#readme"
+}

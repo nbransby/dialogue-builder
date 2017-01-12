@@ -1,0 +1,16 @@
+{
+  "testFramework": "jasmine",
+  "files": [
+      "dialog-builder.ts"
+  ],
+  "tests": [
+      "tests.ts"
+  ],
+  "env" : {
+      "type": "node",
+      "runner": "node"      
+  },
+  "reportConsoleErrorAsError": false,
+  "debug": true
+}
+

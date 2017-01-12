@@ -1,0 +1,19 @@
+// Place your settings in this file to overwrite default and user settings.
+{
+
+    // Configure file associations to languages (e.g. "*.extension": "html"). These have precedence over the default associations of the languages installed.
+    "files.associations": {
+        "**/.njk": "swift"
+    },
+    "files.exclude": {
+        "**/.git": true,
+        "**/.DS_Store": true,
+        "**/*.js": { "when": "$(basename).ts" },
+        "**/*.js.map": { "when": "$(basename)" }
+    },
+    "typescript.tsdk": "./node_modules/typescript/lib",
+    "files.autoSave": "onFocusChange",
+    "editor.fontLigatures": true,
+    "editor.fontFamily": "Fira Code",
+    "editor.fontSize": 14
+ }
