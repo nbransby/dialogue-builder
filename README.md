@@ -8,7 +8,7 @@
 [coverage-image]:https://codecov.io/gh/nbransby/dialogue-builder/branch/master/graph/badge.svg
 [coverage-url]:https://codecov.io/gh/nbransby/dialogue-builder
 
-The goal of this library is to enable you to write a static bot dialogue in a highly readable way that allows you to review the dialogue at a glance, it currently has only been designed to work with Facebook Messenger bots. 
+The goal of this library is to enable you to write a static bot dialogue in a highly readable way that allows you to review the dialogue at a glance, it currently has been designed to work with Facebook Messenger bots only. 
 
 
 ```javascript
@@ -20,6 +20,7 @@ exports.default = dialogue('Onboarding ', (name) => [
     expect `My age is`, {
         [onText]: (text) => console.log(`${name}'s age is ${text}`)
     },
+    
     ask `What length is your hair?`,
     expect `My hair length is`, {
         'Long': (text) => console.log(`${name}'s hair is ${text}`),
@@ -29,17 +30,21 @@ exports.default = dialogue('Onboarding ', (name) => [
             return goto `after_hair_colour`;
         },
     },
+    
     ask `What colour is your hair?`,
     expect `My hair colour is`, {
         'Black': (text) => console.log(`${name}'s hair colour is ${text}`),
         'Brown': (text) => console.log(`${name}'s hair colour is ${text}`),
         'Blonde': (text) => console.log(`${name}'s hair colour is ${text}`),
     },
+    
     'after_hair_colour',
+    
     ask `Where do you live?`, 
     expect `I live at`, {
         [location]: (lat, long, title, url) => console.log(`User located at ${lat}, ${long}`)
     },
+    
     say `Thanks ${name}, have a nice day`,
 ]);
 ```
@@ -72,9 +77,11 @@ module.exports = botBuilder(function (message) {
 });
 ````
 
-Dialogue builder is built on top of the excellent [bot-builder](https://github.com/claudiajs/claudia-bot-builder) by [claudia.js](https://claudiajs.com/) and the code above is the entry point for a bot builder project. Each invocation of the function above is caused by an incoming message from the user. The `consume` method called above would continue the dialogue where it left off, calling any responses handlers for the incoming message and returning the next set of outgoing messages to sent. 
+Dialogue builder is built on top of the excellent [bot-builder](https://github.com/claudiajs/claudia-bot-builder) by [claudia.js](https://claudiajs.com/) and the code above is the entry point for a bot builder project. 
 
-Except in the example above the bot would simply repeat the beginning of the dialog each time the user sent a message because the state handler (`store` and `retrieve` methods) is not persisting the internal dialogue state (which is a plain old json object. You would normally store this state under your user record in a persistence storage mechanism on your choosing. 
+Each invocation of the function above is caused by an incoming message from the user. The `consume` method called above would continue the dialogue where it left off, calling any responses handlers for the incoming message and returning the next set of outgoing messages to send. 
+
+Except, in the example above, the bot would simply repeat the beginning of the dialog each time the user sent a message because the state handler (`store` and `retrieve` methods) is not persisting the internal dialogue state (which is a plain old json object. You would normally store this state under your user record in a persistence storage mechanism on your choosing. 
 
 ## Reference
 
