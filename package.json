@@ -8,11 +8,15 @@
   },
   "devDependencies": {
     "@types/jasmine": "^2.5.40",
+    "codecov": "^1.0.1",
     "jasmine": "^2.5.2",
+    "nyc": "^10.0.0",
     "typescript": "^2.1.4"
-  },  
+  },
   "scripts": {
-    "test": "tsc && jasmine JASMINE_CONFIG_PATH=jasmine.json"
+    "pretest": "tsc",
+    "test": "nyc jasmine JASMINE_CONFIG_PATH=jasmine.json",
+    "posttest": "nyc report --reporter=json && codecov -f coverage/*.json"
   },
   "repository": {
     "type": "git",
