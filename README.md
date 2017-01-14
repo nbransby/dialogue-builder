@@ -8,8 +8,7 @@
 [coverage-image]:https://codecov.io/gh/nbransby/dialogue-builder/branch/master/graph/badge.svg
 [coverage-url]:https://codecov.io/gh/nbransby/dialogue-builder
 
-The goal of this library is to enable you to write a static bot dialogue in a highly readable way that allows you to review the dialogue at a glance, it currently has been designed to work with Facebook Messenger bots only. 
-
+The goal of this library is to enable you to write a static bot dialogue in JavaScript or TypeScript. It utilises template literals to enable you to write dialogue in a highly readable way making it easier to review the dialogue at a glance, it currently has been designed to work with Facebook Messenger bots only.
 
 ```javascript
 exports.default = dialogue('Onboarding ', (name) => [ 
@@ -54,7 +53,7 @@ exports.default = dialogue('Onboarding ', (name) => [
 npm install dialogue-builder
 ```
 
-## Intro
+## How it works
 
 If the example dialogue above was defined in a file called `onboarding.js` you would write the following to get your bot to follow it:
 
@@ -81,19 +80,67 @@ Dialogue builder is built on top of the excellent [bot-builder](https://github.c
 
 Each invocation of the function above is caused by an incoming message from the user. The `consume` method called above would continue the dialogue where it left off, calling any responses handlers for the incoming message and returning the next set of outgoing messages to send. 
 
-Except, in the example above, the bot would simply repeat the beginning of the dialog each time the user sent a message because the state handler (`store` and `retrieve` methods) is not persisting the internal dialogue state (which is a plain old json object. You would normally store this state under your user record in a persistence storage mechanism on your choosing. 
+Except, in the example above, the bot would simply repeat the beginning of the dialog each time the user sent a message because the storage handler (the `store` and `retrieve` methods) is not persisting the internal dialogue state (which is a JSON object). You would normally store this state under your user record in a persistence storage mechanism on your choosing. 
 
-## Reference
+## API
 
-The dialogue-builder module exports the following:
-* `dialogue` function
+The dialogue-builder module exports the following interface:
+* [`dialogue` function](###-`dialogue`-function)
+* [`say`, `ask`, `expect`, `goto` template literal tag functions](###-`say`,-`ask`,-`expect`,-`goto`-tag-functions)
+* [`location`, `onText`, `onLocation`, `onImage`, `onAudio`, `onVideo`, `onFile` symbols](###-`location`,-`onText`,-`onLocation`,-`onImage`,-`onAudio`,-`onVideo`,-`onFile`-symbols)
+* [`UnexpectedInputError`  class](###-`UnexpectedInputError`-class)
 * `Dialogue` class
 
 ### `dialogue` function
+````typescript
+dialogue(name: string, script: (...context: any) => Array<Label | Expect | Goto | Say | Ask | ResponseHandler>): DialogueBuilder`
+````
+This function is used to define your script, the first arg is the name of your dialogue (not shown to the user) and the second is your script function which should return an array (the lines of your script). This function is passed any custom args you passed to the [Dialogue contructor](###-`Dialogue`-class).
+
+### `say`, `ask`, `expect`, `goto` tags functions
+
+The array passed to the dialogue function form the lines of your script, an element in this array has to be one of:
+* `say` _string_: Your bot will simply repeat the string passed in 
+* `ask` _string_: Identical to `say` except only `ask` statements are repeated on [undo]() or an unhandled response
+* `expect` _string_: This statement marks a break in the dialog to wait for a user response. The _string_ you pass is the response you expect from the user, it's used as a key when persisting the state of the conversation and so *must* be a string unique amongst all expect statements. An expect statement must always be immediately followed by a [`ResponseHandler`](###-`location`,-`onText`,-`onLocation`,-`onImage`,-`onAudio`,-`onVideo`,-`onFile`-symbols)
+* `goto` _string_: A goto statement will cause the dialogue to jump to another location in the script. The string you pass in specifies the label to jump to. `goto` statements can also be returned from a [`ResponseHandler`](###-`location`,-`onText`,-`onLocation`,-`onImage`,-`onAudio`,-`onVideo`,-`onFile`-symbols)'s methods
+* _string_: Any untagged strings in the array are treated as labels which serve as the destination of goto statements.
+
+### `location`, `onText`, `onLocation`, `onImage`, `onAudio`, `onVideo`, `onFile` symbols
+
+A `ResponseHandler` is an object who's methods are called on receieving a message from the user to handle the response to the immediately preceeding `expect` statement. The supported methods are:
+* _string_`: () => Goto | void`: A string property causes a quick reply to be attached to the last outgoing message, the function is called on the user selecting the reply
+* `[location]: (lat: number, long: number, title?: string, url?: string) => Goto | void`: The `location` symbol property causes a location quick reply to be attached to the last outgoing message, the function is called on the user selecting the reply
+* `[onText]: (text: string) => Goto | void`: The `onText` symbol property is called when the user types a text response that doesn't match any of the quick replies
+* `[onLocation]: (lat: number, long: number, title?: string, url?: string) => Goto | void`: The `onLocation` symbol property is called when the user types a sends a location, you cannot define both `location` and `onLocation` properties on the same response handler
+* `[onImage]: (url: string) => Goto | void`: The `onImage` symbol property is called when the user sends an image
+* `[onAudio]: (url: string) => Goto | void`: The `onAudio` symbol property is called when the user sends an audio recording
+* `[onVideo]: (url: string) => Goto | void`: The `onVideo` symbol property is called when the user sends a video
+* `[onFile]: (url: string) => Goto | void`: The `onFile` symbol property is called when the user sends a file
+
+Returning a [goto statement](###-`say`,-`ask`,-`expect`,-`goto`-tag-functions) from a `ResponseHandler` method will cause the dialogue to jump to the specified label
+
+### `UnexpectedInputError` class
+
+When a [`ResponseHandler`](###-`location`,-`onText`,-`onLocation`,-`onImage`,-`onAudio`,-`onVideo`,-`onFile`-symbols) recieves a message from the user for which is does not contain a handler method for an instance of `UnexpectedInputError` is thrown, this will cause the question to be repeated. You can invoke this behavour in a handled response by throwing this error from the handler method
 
 ### `Dialogue` class
-
-The `Dialogue` class has two required args, the first is the dialogue (the return value from the `dialogue` function in the first  
+````typescript
+class Dialogue {
+    constructor(builder: DialogueBuilder, storage: Storage, ...context: any);
+    setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void;
+    readonly isComplete: boolean;
+    consume(message: Message): string[];
+}
+````
+The `Dialogue` class constructor has two required args, the first is the dialogue (the return value from the [`dialogue` function](###-`dialogue`-function)) and the second is the storage handler, you need to pass an object comforming to the following interface to store the dialog state, typically under your user record in a persistence storage mechanism on your choosing:
+````typescript
+interface Storage {
+    store(state: Object): void;
+    retrieve(): Object;
+}
+````
+Any additional args passed to the contructor are passed to the [`dialogue` function](###-`dialogue`-function) this would be typically used to pass through the user's details to customise the dialogue plus any object needed in the [`ResponseHandlers`](###-`location`,-`onText`,-`onLocation`,-`onImage`,-`onAudio`,-`onVideo`,-`onFile`-symbols) to act on user reponses
 
 ## Extra reading 
 
