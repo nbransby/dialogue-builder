@@ -152,3 +152,7 @@ Two built-in keyword handlers exist which you can assigned keyword to by replaci
 The undo keyword handler will repeat the last question asked in the dialogue, allowing the user to correct a mistake
 ####  `restart`
 The restart keyword handler will reset the dialogue to the beginning and is useful to enable during development
+
+## Full Reference
+
+Refer to [tests](/tests.ts#L89) for all the expected behavior of the library
