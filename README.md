@@ -82,7 +82,7 @@ Dialogue builder is built on top of the excellent [bot-builder](https://github.c
 
 Each invocation of the function above is caused by an incoming message from the user. The `consume` method called above would continue the dialogue where it left off, calling any responses handlers for the incoming message and returning the next set of outgoing messages to send. 
 
-Except, in the example above, the bot would simply repeat the beginning of the dialog each time the user sent a message because the storage handler (the `store` and `retrieve` methods) is not persisting the internal dialogue state (which is a JSON object). You would normally store this state under your user record in a persistence storage mechanism on your choosing. 
+Except, in the example above, the bot would simply repeat the beginning of the dialogue each time the user sent a message because the storage handler (the `store` and `retrieve` methods) is not persisting the internal dialogue state (which is a JSON object). You would normally store this state under your user record in a persistence storage mechanism on your choosing. 
 
 ## API
 
@@ -104,7 +104,7 @@ This function is used to define your script, the first arg is the name of your d
 The array passed to the dialogue function form the lines of your script, an element in this array has to be one of:
 * `say` _string_: Your bot will simply repeat the string passed in 
 * `ask` _string_: Identical to `say` except only `ask` statements are repeated on [undo](#undo) or an unhandled response
-* `expect` _string_: This statement marks a break in the dialog to wait for a user response. The _string_ you pass is the response you expect from the user, it's used as a key when persisting the state of the conversation and so *must* be a string unique amongst all expect statements. An expect statement must always be immediately followed by a [`ResponseHandler`](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-symbols)
+* `expect` _string_: This statement marks a break in the dialogue to wait for a user response. The _string_ you pass is the response you expect from the user, it's used as a key when persisting the state of the conversation and so *must* be a string unique amongst all expect statements. An expect statement must always be immediately followed by a [`ResponseHandler`](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-symbols)
 * `goto` _string_: A goto statement will cause the dialogue to jump to another location in the script. The string you pass in specifies the label to jump to. `goto` statements can also be returned from a [`ResponseHandler's`](#location-onText-onLocation-onImage-onAudio-onVideo-onFile-symbols) methods
 * _string_: Any untagged strings in the array are treated as labels which serve as the destination of goto statements.
 
@@ -135,7 +135,7 @@ class Dialogue {
     consume(message: Message): string[];
 }
 ````
-The `Dialogue` class constructor has two required args, the first is the dialogue (the return value from the [`dialogue` function](#dialogue-function) and the second is the storage handler, you need to pass an object conforming to the following interface to store the dialog state, typically under your user record in a persistence storage mechanism on your choosing:
+The `Dialogue` class constructor has two required args, the first is the dialogue (the return value from the [`dialogue` function](#dialogue-function) and the second is the storage handler, you need to pass an object conforming to the following interface to store the dialogue state, typically under your user record in a persistence storage mechanism on your choosing:
 ````typescript
 interface Storage {
     store(state: Object): void;
