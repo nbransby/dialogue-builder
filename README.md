@@ -90,8 +90,8 @@ The `dialogue-builder` module exports the following interface:
 * [`dialogue` function](#dialogue-function)
 * [`say`, `ask`, `expect`, `goto` template literal tag functions](#say-ask-expect-goto-tags-functions)
 * [`location`, `onText`, `onLocation`, `onImage`, `onAudio`, `onVideo`, `onFile` symbols](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-symbols)
-* [`UnexpectedInputError` class](#UnexpectedInputError-class)
-* [`Dialogue` class](#Dialogue-class)
+* [`UnexpectedInputError` class](#unexpectedinputerror-class)
+* [`Dialogue` class](#dialogue-class)
 
 ### `dialogue` function
 ````typescript
