@@ -1,6 +1,6 @@
 {
   "name": "dialogue-builder",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Beautifuly readable static dialogue - great for simple bots or an onboarding flow",
   "main": "dialog-builder.js",
   "types": "dialog-builder.d.ts",
