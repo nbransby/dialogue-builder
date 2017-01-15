@@ -87,7 +87,7 @@ Except, in the example above, the bot would simply repeat the beginning of the d
 ## API
 
 The `dialogue-builder` module exports the following interface:
-* [`dialogue` function](###-`dialogue`-function)
+* [`dialogue` function](#dialogue-function)
 * [`say`, `ask`, `expect`, `goto` template literal tag functions](###-`say`,-`ask`,-`expect`,-`goto`-tag-functions)
 * [`location`, `onText`, `onLocation`, `onImage`, `onAudio`, `onVideo`, `onFile` symbols](###-`location`,-`onText`,-`onLocation`,-`onImage`,-`onAudio`,-`onVideo`,-`onFile`-symbols)
 * [`UnexpectedInputError`  class](###-`UnexpectedInputError`-class)
