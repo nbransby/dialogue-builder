@@ -88,24 +88,24 @@ Except, in the example above, the bot would simply repeat the beginning of the d
 
 The `dialogue-builder` module exports the following interface:
 * [`dialogue` function](#dialogue-function)
-* [`say`, `ask`, `expect`, `goto` template literal tag functions](###say,-ask,-expect,-goto-tag-functions)
-* [`location`, `onText`, `onLocation`, `onImage`, `onAudio`, `onVideo`, `onFile` symbols](###-`location`,-`onText`,-`onLocation`,-`onImage`,-`onAudio`,-`onVideo`,-`onFile`-symbols)
-* [`UnexpectedInputError`  class](###-`UnexpectedInputError`-class)
-* `Dialogue` class
+* [`say`, `ask`, `expect`, `goto` template literal tag functions](#say-ask-expect-goto-tags-functions)
+* [`location`, `onText`, `onLocation`, `onImage`, `onAudio`, `onVideo`, `onFile` symbols](#location-onText-onLocation-onImage-onAudio-onVideo-onFile-symbols)
+* [`UnexpectedInputError`  class](#UnexpectedInputError-class)
+* [`Dialogue` class](#Dialogue-class)
 
 ### `dialogue` function
 ````typescript
 dialogue(name: string, script: (...context: any) => Array<Label | Expect | Goto | Say | Ask | ResponseHandler>): DialogueBuilder`
 ````
-This function is used to define your script, the first arg is the name of your dialogue (not shown to the user) and the second is your script function which should return an array (the lines of your script). This function is passed any custom args you passed to the [Dialogue contructor](###-`Dialogue`-class).
+This function is used to define your script, the first arg is the name of your dialogue (not shown to the user) and the second is your script function which should return an array (the lines of your script). This function is passed any custom args you passed to the [Dialogue contructor](#Dialogue-class).
 
 ### `say`, `ask`, `expect`, `goto` tags functions
 
 The array passed to the dialogue function form the lines of your script, an element in this array has to be one of:
 * `say` _string_: Your bot will simply repeat the string passed in 
-* `ask` _string_: Identical to `say` except only `ask` statements are repeated on [undo](####-undo) or an unhandled response
-* `expect` _string_: This statement marks a break in the dialog to wait for a user response. The _string_ you pass is the response you expect from the user, it's used as a key when persisting the state of the conversation and so *must* be a string unique amongst all expect statements. An expect statement must always be immediately followed by a [`ResponseHandler`](###-`location`,-`onText`,-`onLocation`,-`onImage`,-`onAudio`,-`onVideo`,-`onFile`-symbols)
-* `goto` _string_: A goto statement will cause the dialogue to jump to another location in the script. The string you pass in specifies the label to jump to. `goto` statements can also be returned from a [`ResponseHandler`](###-`location`,-`onText`,-`onLocation`,-`onImage`,-`onAudio`,-`onVideo`,-`onFile`-symbols)'s methods
+* `ask` _string_: Identical to `say` except only `ask` statements are repeated on [undo](#undo) or an unhandled response
+* `expect` _string_: This statement marks a break in the dialog to wait for a user response. The _string_ you pass is the response you expect from the user, it's used as a key when persisting the state of the conversation and so *must* be a string unique amongst all expect statements. An expect statement must always be immediately followed by a [`ResponseHandler`](#location-onText-onLocation-onImage-onAudio-onVideo-onFile-symbols)
+* `goto` _string_: A goto statement will cause the dialogue to jump to another location in the script. The string you pass in specifies the label to jump to. `goto` statements can also be returned from a [`ResponseHandler's`](#location-onText-onLocation-onImage-onAudio-onVideo-onFile-symbols) methods
 * _string_: Any untagged strings in the array are treated as labels which serve as the destination of goto statements.
 
 ### `location`, `onText`, `onLocation`, `onImage`, `onAudio`, `onVideo`, `onFile` symbols
@@ -118,13 +118,13 @@ A `ResponseHandler` is an object who's methods are called on receieving a messag
 * `[onImage]: (url: string) => Goto | void`: The `onImage` symbol property is called when the user sends an image
 * `[onAudio]: (url: string) => Goto | void`: The `onAudio` symbol property is called when the user sends an audio recording
 * `[onVideo]: (url: string) => Goto | void`: The `onVideo` symbol property is called when the user sends a video
-* `[onFile]: (url: string) => Goto | void````: The `onFile` symbol property is called when the user sends a file
+* `[onFile]: (url: string) => Goto | void`: The `onFile` symbol property is called when the user sends a file
 
-Returning a [goto statement](###-`say`,-`ask`,-`expect`,-`goto`-tag-functions) from a `ResponseHandler` method will cause the dialogue to jump to the specified label
+Returning a [goto statement](#say-ask-expect-goto-tags-functions) from a [`ResponseHandler`](#location-onText-onLocation-onImage-onAudio-onVideo-onFile-symbols) method will cause the dialogue to jump to the specified label
 
 ### `UnexpectedInputError` class
 
-When a [`ResponseHandler`](###-`location`,-`onText`,-`onLocation`,-`onImage`,-`onAudio`,-`onVideo`,-`onFile`-symbols) recieves a message from the user for which is does not contain a handler method for an instance of `UnexpectedInputError` is thrown, this will cause the question to be repeated. You can invoke this behavour in a handled response by throwing this error from the handler method
+When a [`ResponseHandler`](#location-onText-onLocation-onImage-onAudio-onVideo-onFile-symbols) recieves a message from the user for which is does not contain a handler method for an instance of `UnexpectedInputError` is thrown, this will cause the question to be repeated. You can invoke this behavour in a handled response by throwing this error from the handler method
 
 ### `Dialogue` class
 ````typescript
@@ -135,16 +135,16 @@ class Dialogue {
     consume(message: Message): string[];
 }
 ````
-The `Dialogue` class constructor has two required args, the first is the dialogue (the return value from the [`dialogue` function](###-`dialogue`-function)) and the second is the storage handler, you need to pass an object comforming to the following interface to store the dialog state, typically under your user record in a persistence storage mechanism on your choosing:
+The `Dialogue` class constructor has two required args, the first is the dialogue (the return value from the [`dialogue` function](#dialogue-function) and the second is the storage handler, you need to pass an object comforming to the following interface to store the dialog state, typically under your user record in a persistence storage mechanism on your choosing:
 ````typescript
 interface Storage {
     store(state: Object): void;
     retrieve(): Object;
 }
 ````
-Any additional args passed to the contructor are passed to the [`dialogue` function](###-`dialogue`-function) this would typically be used to pass through the user's details to customise the dialogue plus any object needed in the [`ResponseHandlers`](###-`location`,-`onText`,-`onLocation`,-`onImage`,-`onAudio`,-`onVideo`,-`onFile`-symbols) to act on user responses.
+Any additional args passed to the contructor are passed to the [`dialogue` function](#dialogue-function) this would typically be used to pass through the user's details to customise the dialogue plus any object needed in the [`ResponseHandlers`](#location-onText-onLocation-onImage-onAudio-onVideo-onFile-symbols) to act on user responses.
 
-Call the `setKeywordHandler` method to create a keyword which will trigger the callback passed in whenever the user sends any of the keywords passed as the first arg, at any point in the conversation. The callback can return a [goto statement](###-`say`,-`ask`,-`expect`,-`goto`-tag-functions) to cause the dialogue to jump to the specified label. 
+Call the `setKeywordHandler` method to create a keyword which will trigger the callback passed in whenever the user sends any of the keywords passed as the first arg, at any point in the conversation. The callback can return a [goto statement](#say-ask-expect-goto-tags-functions) to cause the dialogue to jump to the specified label. 
 
 Two built-in keyword handlers exist which you can assigned keyword to by replacing the callback with either `undo` or `restart`
 
