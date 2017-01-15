@@ -15,6 +15,7 @@ exports.default = dialogue('Onboarding ', (name) => [
     say `Hi ${name}, welcome to nosy bot!`, 
     say `This inquisitive little bot will ask a bunch of questions for no reason`, 
     say `It will log your answers pointlessly to the console`, 
+    say `You can always type back if you make mistake`, 
     ask `How old are you?`,
     expect `My age is`, {
         [onText]: (text) => console.log(`${name}'s age is ${text}`)
@@ -68,6 +69,7 @@ module.exports = botBuilder(function (message) {
         store(state: Object) => console.log('Need to persist this somewhere')
         retrieve() => return new Object()
     }, 'Dave');
+    dialogue.setKeywordHandler('back', 'undo');
     const messages = dialogue.consume(message);
     if(dialogue.isComplete) {
         //do something
@@ -84,7 +86,7 @@ Except, in the example above, the bot would simply repeat the beginning of the d
 
 ## API
 
-The dialogue-builder module exports the following interface:
+The `dialogue-builder` module exports the following interface:
 * [`dialogue` function](###-`dialogue`-function)
 * [`say`, `ask`, `expect`, `goto` template literal tag functions](###-`say`,-`ask`,-`expect`,-`goto`-tag-functions)
 * [`location`, `onText`, `onLocation`, `onImage`, `onAudio`, `onVideo`, `onFile` symbols](###-`location`,-`onText`,-`onLocation`,-`onImage`,-`onAudio`,-`onVideo`,-`onFile`-symbols)
@@ -101,7 +103,7 @@ This function is used to define your script, the first arg is the name of your d
 
 The array passed to the dialogue function form the lines of your script, an element in this array has to be one of:
 * `say` _string_: Your bot will simply repeat the string passed in 
-* `ask` _string_: Identical to `say` except only `ask` statements are repeated on [undo]() or an unhandled response
+* `ask` _string_: Identical to `say` except only `ask` statements are repeated on [undo](####-undo) or an unhandled response
 * `expect` _string_: This statement marks a break in the dialog to wait for a user response. The _string_ you pass is the response you expect from the user, it's used as a key when persisting the state of the conversation and so *must* be a string unique amongst all expect statements. An expect statement must always be immediately followed by a [`ResponseHandler`](###-`location`,-`onText`,-`onLocation`,-`onImage`,-`onAudio`,-`onVideo`,-`onFile`-symbols)
 * `goto` _string_: A goto statement will cause the dialogue to jump to another location in the script. The string you pass in specifies the label to jump to. `goto` statements can also be returned from a [`ResponseHandler`](###-`location`,-`onText`,-`onLocation`,-`onImage`,-`onAudio`,-`onVideo`,-`onFile`-symbols)'s methods
 * _string_: Any untagged strings in the array are treated as labels which serve as the destination of goto statements.
@@ -116,7 +118,7 @@ A `ResponseHandler` is an object who's methods are called on receieving a messag
 * `[onImage]: (url: string) => Goto | void`: The `onImage` symbol property is called when the user sends an image
 * `[onAudio]: (url: string) => Goto | void`: The `onAudio` symbol property is called when the user sends an audio recording
 * `[onVideo]: (url: string) => Goto | void`: The `onVideo` symbol property is called when the user sends a video
-* `[onFile]: (url: string) => Goto | void`: The `onFile` symbol property is called when the user sends a file
+* `[onFile]: (url: string) => Goto | void````: The `onFile` symbol property is called when the user sends a file
 
 Returning a [goto statement](###-`say`,-`ask`,-`expect`,-`goto`-tag-functions) from a `ResponseHandler` method will cause the dialogue to jump to the specified label
 
@@ -140,8 +142,13 @@ interface Storage {
     retrieve(): Object;
 }
 ````
-Any additional args passed to the contructor are passed to the [`dialogue` function](###-`dialogue`-function) this would be typically used to pass through the user's details to customise the dialogue plus any object needed in the [`ResponseHandlers`](###-`location`,-`onText`,-`onLocation`,-`onImage`,-`onAudio`,-`onVideo`,-`onFile`-symbols) to act on user reponses
+Any additional args passed to the contructor are passed to the [`dialogue` function](###-`dialogue`-function) this would typically be used to pass through the user's details to customise the dialogue plus any object needed in the [`ResponseHandlers`](###-`location`,-`onText`,-`onLocation`,-`onImage`,-`onAudio`,-`onVideo`,-`onFile`-symbols) to act on user responses.
 
-## Extra reading 
+Call the `setKeywordHandler` method to create a keyword which will trigger the callback passed in whenever the user sends any of the keywords passed as the first arg, at any point in the conversation. The callback can return a [goto statement](###-`say`,-`ask`,-`expect`,-`goto`-tag-functions) to cause the dialogue to jump to the specified label. 
 
-*  [Test examples](https://github.com/crossrails/compiler/wiki/reference)
+Two built-in keyword handlers exist which you can assigned keyword to by replacing the callback with either `undo` or `restart`
+
+#### `undo`
+The undo keyword handler will repeat the last question asked in the dialogue, allowing the user to correct a mistake
+####  `restart`
+The restart keyword handler will reset the dialogue to the beginning and is useful to enable during development
