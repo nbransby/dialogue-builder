@@ -7,6 +7,7 @@ tests.*
 tsconfig.json
 wallaby.json
 jasmine.json
-*.yaml
+circle.yaml
+codecov.yml
 coverage
 .nyc_output
