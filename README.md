@@ -1,4 +1,4 @@
-# Dialogue Builder [![npm version][version-image]][package-url] [![Coverage Status][coverage-image]][coverage-url] [![Build status][ci-image]][ci-url][![npm](https://img.shields.io/npm/l/dialogue-builder.svg)](/LICENSE)
+# Dialogue Builder [![npm version][version-image]][package-url] [![Build status][ci-image]][ci-url] [![Coverage Status][coverage-image]][coverage-url] [![npm](https://img.shields.io/npm/l/dialogue-builder.svg)](/LICENSE)
 
 [package-url]: https://www.npmjs.com/package/dialogue-builder
 [version-image]: https://badge.fury.io/js/dialogue-builder.svg
