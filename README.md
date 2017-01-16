@@ -80,9 +80,9 @@ module.exports = botBuilder(function (message) {
 
 Dialogue builder is built on top of the excellent [bot-builder](https://github.com/claudiajs/claudia-bot-builder) by [claudia.js](https://claudiajs.com/) and the code above is the entry point for a bot builder project. 
 
-Each invocation of the function above is caused by an incoming message from the user. The `consume` method called above would continue the dialogue where it left off, calling any responses handlers for the incoming message and returning the next set of outgoing messages to send. 
+Each invocation of the function above is caused by an incoming message from the user. The `consume` method called above would continue the dialogue where it left off, calling any [responses handlers](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-symbols) for the incoming message and returning the next set of outgoing messages to send. 
 
-Except, in the example above, the bot would simply repeat the beginning of the dialogue each time the user sent a message because the storage handler (the `store` and `retrieve` methods) is not persisting the internal dialogue state (which is a JSON object). You would normally store this state under your user record in a persistence storage mechanism on your choosing. 
+Except, in the example above, the bot would simply repeat the beginning of the dialogue each time the user sent a message because the storage handler (the `store` and `retrieve` methods) is not persisting the internal dialogue state (which is a JSON object). You would normally store this state under your user record in the persistence storage mechanism on your choosing. 
 
 ## API
 
@@ -146,14 +146,14 @@ Any additional args passed to the contructor are passed to the [`dialogue` funct
 
 Call the `setKeywordHandler` method to create a keyword which will trigger the callback passed in whenever the user sends any of the keywords passed as the first arg, at any point in the conversation. The callback can return a [goto statement](#say-ask-expect-goto-tags-functions) to cause the dialogue to jump to the specified label. 
 
-Two built-in keyword handlers exist which you can assigned keyword to by replacing the callback with either `undo` or `restart`
+Two built-in keyword handlers exist, which you can assign keywords to by replacing the callback with either `undo` or `restart`
 
 #### `undo`
 The undo keyword handler will repeat the last question asked in the dialogue, allowing the user to correct a mistake
 ####  `restart`
 The restart keyword handler will reset the dialogue to the beginning and is useful to enable during development
 
-## Full Reference
+## Behavioral specifications
 
 * [it passes the supplied context to the script method](/tests.ts#L89)
 * [it throws an exception on empty script given](/tests.ts#L97)
