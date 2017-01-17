@@ -97,7 +97,7 @@ The `dialogue-builder` module exports the following interface:
 ````typescript
 dialogue(name: string, script: (...context: any) => Array<Label | Expect | Goto | Say | Ask | ResponseHandler>): DialogueBuilder`
 ````
-This function is used to define your script, the first arg is the name of your dialogue (not shown to the user) and the second is your script function which should return an array (the lines of your script). This function is passed any custom args you passed to the [Dialogue contructor](#Dialogue-class).
+This function is used to define your script, the first arg is the name of your dialogue (not shown to the user) and the second is your script function which should return an array (the lines of your script). This function is passed any custom args you passed to the [Dialogue contructor](#dialogue-class).
 
 ### `say`, `ask`, `expect`, `goto` tags functions
 
