@@ -11,3 +11,4 @@ circle.yaml
 codecov.yml
 coverage
 .nyc_output
+gulpfile.*
