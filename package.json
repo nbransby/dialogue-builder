@@ -8,6 +8,7 @@
     "claudia-bot-builder": "^2.11.0"
   },
   "devDependencies": {
+    "@types/node": "^7.0.4",
     "@types/jasmine": "^2.5.40",
     "codecov": "^1.0.1",
     "gulp": "^3.9.1",
