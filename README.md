@@ -8,7 +8,7 @@
 [coverage-image]:https://codecov.io/gh/nbransby/dialogue-builder/branch/master/graph/badge.svg
 [coverage-url]:https://codecov.io/gh/nbransby/dialogue-builder
 
-The goal of this library is to enable you to write a static bot dialogue in JavaScript or TypeScript. It utilises template literals to enable you to write dialogue in a highly readable way making it easier to review the dialogue at a glance, it currently has been designed to work with Facebook Messenger bots only.
+The goal of this library is to enable you to write a static bot dialogue in JavaScript or TypeScript. It utilises template literals to enable you to write dialogue in a highly readable way making it easier to review the dialogue at a glance, it currently has been designed to work with Facebook Messenger bots only. See [dialogue-builder-example](https://github.com/nbransby/dialogue-builder-example) for a working example.
 
 ```javascript
 exports.default = dialogue('Onboarding ', (name) => [ 
@@ -82,7 +82,7 @@ Dialogue builder is built on top of the excellent [bot-builder](https://github.c
 
 Each invocation of the function above is caused by an incoming message from the user. The `consume` method called above would continue the dialogue where it left off, calling any [responses handlers](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-symbols) for the incoming message and returning the next set of outgoing messages to send. 
 
-Except, in the example above, the bot would simply repeat the beginning of the dialogue each time the user sent a message because the storage handler (the `store` and `retrieve` methods) is not persisting the internal dialogue state (which is a JSON object). You would normally store this state under your user record in the persistence storage mechanism on your choosing. 
+Except, in the example above, the bot would simply repeat the beginning of the dialogue each time the user sent a message because the storage handler (the `store` and `retrieve` methods) is not persisting the internal dialogue state (which is a JSON object). You would normally store this state under your user record in the persistence storage mechanism on your choosing. See [dialogue-builder-example](https://github.com/nbransby/dialogue-builder-example) for an example on how to implement this using DynamoDB.
 
 ## API
 
