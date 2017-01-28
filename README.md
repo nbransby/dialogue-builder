@@ -67,14 +67,10 @@ const onboarding = require('onboarding');
 module.exports = botBuilder(function (message) {
     const dialogue = new Dialogue(onboarding, {
         store(state: Object) => console.log('Need to persist this somewhere')
-        retrieve() => return new Object()
+        retrieve() => return Promise.resolve(new Object())
     }, 'Dave');
     dialogue.setKeywordHandler('back', 'undo');
-    const messages = dialogue.consume(message);
-    if(dialogue.isComplete) {
-        //do something
-    }
-    return messages;
+    return dialogue.consume(message, () => console.log('Dialogue complete'));
 });
 ````
 
@@ -132,14 +128,14 @@ class Dialogue {
     constructor(builder: DialogueBuilder, storage: Storage, ...context: any);
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void;
     readonly isComplete: boolean;
-    consume(message: Message): string[];
+    consume(message: Message): Promise<string[]>;
 }
 ````
 The `Dialogue` class constructor has two required args, the first is the dialogue (the return value from the [`dialogue` function](#dialogue-function) and the second is the storage handler, you need to pass an object conforming to the following interface to store the dialogue state, typically under your user record in a persistence storage mechanism on your choosing:
 ````typescript
 interface Storage {
-    store(state: Object): void;
-    retrieve(): Object;
+    store(state: Object): Promise<void>;
+    retrieve(): Promise<Object>;
 }
 ````
 Any additional args passed to the contructor are passed to the [`dialogue` function](#dialogue-function) this would typically be used to pass through the user's details to customise the dialogue plus any object needed in the [`ResponseHandlers`](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-symbols) to act on user responses.
@@ -155,40 +151,42 @@ The restart keyword handler will reset the dialogue to the beginning and is usef
 
 ## Behavioral specifications
 
-* [it passes the supplied context to the script method](/tests.ts#L89)
-* [it throws an exception on empty script given](/tests.ts#L97)
-* [it throws an exception on script only containing labels](/tests.ts#L108)
-* [it sends the first and only message in a single message dialogue](/tests.ts#L122)
-* [it return no messages on consume when complete](/tests.ts#L132)
-* [it sends muliple say or ask messages at once](/tests.ts#L143)
-* [it trims extranous whitespace](/tests.ts#L156)
-* [it throws an exception on script with duplicate expect statements](/tests.ts#L164)
-* [it throws an exception on expect statement not followed by a response handler](/tests.ts#L180)
-* [it throws an exception on a response handler not preceeded by an expect statement](/tests.ts#L202)
-* [it pauses on expect to wait for a response](/tests.ts#L217)
-* [it resumes where it paused on recieving a response](/tests.ts#L234)
-* [it attaches any quick replies defined in response handler to last message](/tests.ts#L247)
-* [it attaches location quick reply if defined in response handler](/tests.ts#L265)
-* [it invokes a quick reply's handler on recieving the reply](/tests.ts#L279)
-* [it supports empty handlers](/tests.ts#L290)
-* [it supports null handlers](/tests.ts#L303)
-* [it throws an error when both location and onLocation specified on a handler](/tests.ts#L328)
-* [it prefers a quick reply handler to the onText handler](/tests.ts#L345)
-* [it invokes the location handler on recieving a location quick reply](/tests.ts#L356)
-* [it invokes the onText handler on recieving a text response](/tests.ts#L368)
-* [it invokes the onLocation handler on recieving a location response](/tests.ts#L380)
-* [it invokes the onImage handler on recieving an image response](/tests.ts#L392)
-* [it invokes the onVideo handler on recieving an video response](/tests.ts#L404)
-* [it invokes the onAudio handler on recieving an audio response](/tests.ts#L416)
-* [it invokes the onFile handler on recieving an file response](/tests.ts#L428)
-* [it handles unexpected response types by repeating only the ask statements](/tests.ts#L440)
-* [it does not send labels as messages](/tests.ts#L458)
-* [it respects inline gotos](/tests.ts#L474)
-* [it respects gotos retuned from response handlers](/tests.ts#L492)
-* [it throws an exception on calling goto with a missing label](/tests.ts#L511)
-* [it throws an exception on script with duplicate labels](/tests.ts#L527)
-* [it aborts a goto that causes an endless loop](/tests.ts#L543)
-* [it resumes from the correct line when a goto skips a response handler](/tests.ts#L559)
-* [it resets the dialogue when user sends a restart keyword](/tests.ts#L583)
-* [it returns to previously asked question when user sends a undo keyword](/tests.ts#L603)
-* [it supports a user sending an undo or restart keyword at the start of a dialogue](/tests.ts#L632)
+* [it passes the supplied context to the script method](/tests.ts#L95)
+* [it throws an exception on empty script given](/tests.ts#L103)
+* [it throws an exception on script only containing labels](/tests.ts#L114)
+* [it sends the first and only message in a single message dialogue](/tests.ts#L128)
+* [it throws empty array on consume when complete](/tests.ts#L138)
+* [it sends muliple say or ask messages at once](/tests.ts#L156)
+* [it trims extranous whitespace](/tests.ts#L170)
+* [it throws an exception on script with duplicate expect statements](/tests.ts#L178)
+* [it throws an exception on expect statement not followed by a response handler](/tests.ts#L194)
+* [it throws an exception on a response handler not preceeded by an expect statement](/tests.ts#L216)
+* [it pauses on expect to wait for a response](/tests.ts#L231)
+* [it resumes where it paused on recieving a response](/tests.ts#L249)
+* [it attaches any quick replies defined in response handler to last message](/tests.ts#L262)
+* [it attaches location quick reply if defined in response handler](/tests.ts#L280)
+* [it invokes a quick reply's handler on recieving the reply](/tests.ts#L294)
+* [it supports empty handlers](/tests.ts#L305)
+* [it supports null handlers](/tests.ts#L319)
+* [it throws an error when both location and onLocation specified on a handler](/tests.ts#L344)
+* [it prefers a quick reply handler to the onText handler](/tests.ts#L361)
+* [it invokes the location handler on recieving a location quick reply](/tests.ts#L372)
+* [it invokes the onText handler on recieving a text response](/tests.ts#L384)
+* [it invokes the onLocation handler on recieving a location response](/tests.ts#L396)
+* [it invokes the onImage handler on recieving an image response](/tests.ts#L408)
+* [it invokes the onVideo handler on recieving an video response](/tests.ts#L420)
+* [it invokes the onAudio handler on recieving an audio response](/tests.ts#L432)
+* [it invokes the onFile handler on recieving an file response](/tests.ts#L444)
+* [it handles unexpected response types by repeating only the ask statements](/tests.ts#L456)
+* [it does not send labels as messages](/tests.ts#L475)
+* [it respects inline gotos](/tests.ts#L491)
+* [it respects gotos retuned from response handlers](/tests.ts#L509)
+* [it throws an exception on calling goto with a missing label](/tests.ts#L528)
+* [it throws an exception on script with duplicate labels](/tests.ts#L544)
+* [it aborts a goto that causes an endless loop](/tests.ts#L560)
+* [it resumes from the correct line when a goto skips a response handler](/tests.ts#L576)
+* [it resets the dialogue when user sends a restart keyword](/tests.ts#L602)
+* [it returns to previously asked question when user sends a undo keyword](/tests.ts#L623)
+* [it returns to last asked question when user sends a undo keyword when complete](/tests.ts#L648)
+* [it accounts for skipped questions due to goto statements when user sends a undo keyword](/tests.ts#L669)
+* [it supports a user sending an undo or restart keyword at the start of a dialogue](/tests.ts#L695)
