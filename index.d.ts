@@ -130,6 +130,6 @@ declare module "dialogue-builder" {
         setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void;
         private process(dialogue, processor);
         private static handle<T>(handler, invoke, ...keys);
-        consume(message: Message, onCompleted: () => void): Promise<string[]>;
+        consume(message: Message, onComplete?: () => void): Promise<string[]>;
     }
 }

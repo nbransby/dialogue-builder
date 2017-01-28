@@ -178,7 +178,7 @@ export class Dialogue<T> {
         return handler[keys[0]] ? invoke(handler[keys[0]]) : undefined;
     }
 
-    async consume(message: Message, onCompleted: () => void): Promise<string[]> {
+    async consume(message: Message, onComplete?: () => void): Promise<string[]> {
         await this.state.retrieveState()
         const keyword = this.keywords.get(message.text.toLowerCase())
         if(keyword) {
@@ -186,7 +186,6 @@ export class Dialogue<T> {
             if(goto) this.state.jump(goto, message.text.toLowerCase());
         }
         if(this.state.isComplete) {
-            onCompleted && onCompleted();
             return [];
         }
         return this.process(this.script, {
@@ -225,7 +224,7 @@ export class Dialogue<T> {
             onComplete: async (output) => {
                 //persist completion 
                 await this.state.complete();
-                onCompleted && onCompleted();
+                onComplete && onComplete();
                 //send remaining messages
                 return output.reduce((r, e) => [...r, new Pause(), new Text(e.toString())], [] as Array<Pause|Text>).map(text => text.get());
             }
