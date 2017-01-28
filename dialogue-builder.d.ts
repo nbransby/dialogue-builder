@@ -40,8 +40,8 @@ export interface DialogueBuilder<T> {
     dialogueName: string;
 }
 export interface Storage {
-    store(state: Object): void;
-    retrieve(): Object;
+    store(state: Object): Promise<void>;
+    retrieve(): Promise<Object>;
 }
 export declare class Dialogue<T> {
     private readonly script;
@@ -50,8 +50,7 @@ export declare class Dialogue<T> {
     private outputType;
     constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]);
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void;
-    readonly isComplete: boolean;
     private process(dialogue, processor);
     private static handle<T>(handler, invoke, ...keys);
-    consume(message: Message): string[];
+    consume(message: Message, onCompleted: () => void): Promise<string[]>;
 }

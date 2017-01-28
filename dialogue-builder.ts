@@ -1,8 +1,8 @@
+import assert = require('assert');
 import builder = require('claudia-bot-builder')
 import Message = builder.Message;
 import Text = builder.fbTemplate.Text;
 import Pause = builder.fbTemplate.Pause;
-
 export const location = Symbol("a location")
 export const onText = Symbol("a typed response")
 export const onLocation = Symbol("a location")
@@ -83,12 +83,12 @@ export interface DialogueBuilder<T> {
 }
 
 export interface Storage {
-    store(state: Object): void
-    retrieve(): Object
+    store(state: Object): Promise<void>
+    retrieve(): Promise<Object>
 }
 
 
-type Processor = { onLast: (handler: ResponseHandler) => void | Goto, onNext: (output: Output[], expect: Expect, handler: ResponseHandler) => string[], onComplete: (output: Output[]) => string[] }
+type Processor = { onLast: (handler: ResponseHandler) => void | Goto, onNext: (output: Output[], expect: Expect, handler: ResponseHandler) => Promise<string[]>, onComplete: (output: Output[]) => Promise<string[]> }
 
 
 export class Dialogue<T> {
@@ -137,11 +137,7 @@ export class Dialogue<T> {
         keys.forEach(k => this.keywords.set(k, h));
     }
     
-    get isComplete(): boolean {
-        return this.state.isComplete;
-    }
-
-    private process(dialogue: Script, processor: Processor): string[] {
+    private async process(dialogue: Script, processor: Processor): Promise<string[]> {
         const output: Output[] = []
         for(let i = this.state.startLine; i < dialogue.length; i++) {
             const element = dialogue[i];
@@ -170,10 +166,10 @@ export class Dialogue<T> {
                         this.outputType = Ask;
                     }
                 }
-                return processor.onNext(output.filter(e => e instanceof this.outputType), element, handler);                             
+                return await processor.onNext(output.filter(e => e instanceof this.outputType), element, handler);                             
             }
         }
-        return processor.onComplete(output);
+        return await processor.onComplete(output);
     }     
 
     private static handle<T>(handler: ResponseHandler, invoke: (method: Function) => T, ...keys: Array<string | symbol>): T | undefined {
@@ -182,15 +178,19 @@ export class Dialogue<T> {
         return handler[keys[0]] ? invoke(handler[keys[0]]) : undefined;
     }
 
-    consume(message: Message): string[] {
+    async consume(message: Message, onCompleted: () => void): Promise<string[]> {
+        await this.state.retrieveState()
         const keyword = this.keywords.get(message.text.toLowerCase())
         if(keyword) {
             const goto = keyword();
             if(goto) this.state.jump(goto, message.text.toLowerCase());
         }
-        if(this.isComplete) return [];
+        if(this.state.isComplete) {
+            onCompleted && onCompleted();
+            return [];
+        }
         return this.process(this.script, {
-            onLast(handler: ResponseHandler) {
+            onLast: (handler: ResponseHandler) => {
                 //if empty handler do nothing
                 if(Object.getOwnPropertyNames(handler).length == 0 && Object.getOwnPropertySymbols(handler).length == 0) return;
                 //handle any attachments
@@ -213,18 +213,19 @@ export class Dialogue<T> {
                 }
                 return Dialogue.handle(handler, m => m(message.text), message.text, onText);
             },
-            onNext: (output, expect, handler) => {
+            onNext: async (output, expect, handler) => {
                 //persist asking of this question
-                this.state.complete(expect);
+                await this.state.complete(expect);
                 //send messages and quick replies if present
                 const messages = output.reduce((r, e) => [...r, new Pause(), new Text(e.toString())], [] as Array<Pause|Text>) as Text[];
                 if(handler[location]) messages[messages.length - 1].addQuickReplyLocation();
                 Object.keys(handler).forEach(key => messages[messages.length - 1].addQuickReply(key, key));
                 return messages.map(text => text.get());
             },
-            onComplete: (output) => {
+            onComplete: async (output) => {
                 //persist completion 
-                this.state.complete();
+                await this.state.complete();
+                onCompleted && onCompleted();
                 //send remaining messages
                 return output.reduce((r, e) => [...r, new Pause(), new Text(e.toString())], [] as Array<Pause|Text>).map(text => text.get());
             }
@@ -233,7 +234,7 @@ export class Dialogue<T> {
 }
 
 class State {
-    private readonly state: Array<{ type: 'label'|'expect'|'complete', name?: string }>
+    private state: Array<{ type: 'label'|'expect'|'complete', name?: string }>
     private asked: Set<string>
     private completed: boolean
     private lastAsked: string | undefined
@@ -241,7 +242,10 @@ class State {
     private jumpCount = 0;
 
     constructor(private storage: Storage, private labels: Map<string, number>) {
-        this.state = this.storage.retrieve() as any || [];
+    }
+
+    async retrieveState() {
+        this.state = await this.storage.retrieve() as any || [];
         this.lastAsked = this.stateChanged();
     }
 
@@ -255,22 +259,27 @@ class State {
     }
 
     isAsked(expect: Expect): boolean {
+        assert(this.state);
         return this.asked.has(expect.toString());
     }
 
     isLastAsked(expect: Expect): boolean {
+        assert(this.state);
         return expect.toString() === this.lastAsked;
     }
 
     get isComplete(): boolean {
+        assert(this.state);
         return this.completed;
     }
 
     get startLine(): number {
+        assert(this.state);
         return this.labels.get(this.startLabel!) || 0;
     }
 
     jump(goto: Goto, lineOrKeyword: number|string): number {
+        assert(this.state);
         const index = this.labels.get(goto.toString());
         if(!index) throw new Error(`Could not find label referenced ${typeof lineOrKeyword == 'number' ? 'on line' : 'by keyword'} '${lineOrKeyword}': goto \`${goto.toString()}\``);
         if(++this.jumpCount > 10) throw new Error(`Endless loop detected ${typeof lineOrKeyword == 'number' ? 'on line' : 'by keyword'} '${lineOrKeyword}': goto \`${goto.toString()}\``);
@@ -280,19 +289,22 @@ class State {
         return index;
     }
 
-    complete(expect?: Expect) {
+    async complete(expect?: Expect) {
+        assert(this.state);
         this.state.unshift(expect ? { type: 'expect', name: expect.toString()} : { type: 'complete'});
         this.lastAsked = this.stateChanged();
-        this.storage.store(this.state);
+        await this.storage.store(this.state);
     }
     
     restart() {
+        assert(this.state);
         this.lastAsked = undefined;
         this.state.length = 0;
         this.stateChanged();
     }
 
     undo() {
+        assert(this.state);
         this.state.splice(0, this.state.findIndex((s, i) => s.type === 'expect' && s.name !== this.lastAsked || i + 1 === this.state.length) + 1);
         this.lastAsked = undefined;
         this.stateChanged();

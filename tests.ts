@@ -13,7 +13,7 @@ describe("Dialogue", () => {
 
     beforeEach(function(this: This) {
         this.build = function<T>(script: () => Script, state: Array<{ type: 'label'|'expect'|'complete', name?: string }>, storage = jasmine.createSpyObj('storage', ['store', 'retrieve']), ...context: T[]): [Dialogue<T>, Storage] {
-            storage.retrieve.and.callFake(() => state);
+            storage.retrieve.and.callFake(() => Promise.resolve(state));
             return [new Dialogue<T>(dialogue("Mock", script), storage, ...context), storage];            
         }        
         this.message = (text, postback) => { return {
@@ -86,15 +86,15 @@ describe("Dialogue", () => {
         this.postback = this.message('Get Started', true)
     });
     
-    it("passes the supplied context to the script method", function(this: This) {
+    it("passes the supplied context to the script method", async function(this: This) {
         const [dialogue] = this.build(context => {
             jasmine.expect(context).toBe('mycontext');
             return [ say `Hi!`]
         }, [], undefined, 'mycontext');
-        dialogue.consume(this.postback)
+        await dialogue.consume(this.postback, () => {})
     });
 
-    it("throws an exception on empty script given", function(this: This) {
+    it("throws an exception on empty script given", async function(this: This) {
         const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
         try {
             this.build(() => [], [], storage);
@@ -105,7 +105,7 @@ describe("Dialogue", () => {
         }
     });
 
-    it("throws an exception on script only containing labels", function(this: This) {
+    it("throws an exception on script only containing labels", async function(this: This) {
         const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
         try {
             this.build(() => [
@@ -119,49 +119,51 @@ describe("Dialogue", () => {
         }
     });
 
-    it("sends the first and only message in a single message dialogue", function(this: This) {
+    it("sends the first and only message in a single message dialogue", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
             say `Hi!`
         ], []);
-        jasmine.expect(dialogue.isComplete).toBe(false);
-        jasmine.expect(dialogue.consume(this.postback)).toEqual(jasmine.arrayContaining([jasmine.objectContaining({ text: 'Hi!' })]));
-        jasmine.expect(dialogue.isComplete).toBe(true);
+        const onCompleted = jasmine.createSpy('onCompleted')
+        jasmine.expect(await dialogue.consume(this.postback, onCompleted)).toEqual(jasmine.arrayContaining([jasmine.objectContaining({ text: 'Hi!' })]));
+        jasmine.expect(onCompleted).toHaveBeenCalled();
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete' }]);
     });
         
-    it("return no messages on consume when complete", function(this: This) {
+    it("return no messages on consume when complete", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
             say `Hi!`
         ], []);
-        dialogue.consume(this.postback)
-        jasmine.expect(dialogue.isComplete).toBe(true);
+        const onCompleted = jasmine.createSpy('onCompleted')
+        await dialogue.consume(this.postback, onCompleted)
+        jasmine.expect(onCompleted).toHaveBeenCalled();
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete' }]);
-        jasmine.expect(dialogue.consume(this.message('Hi'))).toEqual([]);
+        jasmine.expect(await dialogue.consume(this.message('Hi'), () => {})).toEqual([]);
         jasmine.expect(storage.store).toHaveBeenCalledTimes(1);
     });
         
-    it("sends muliple say or ask messages at once", function(this: This) {
+    it("sends muliple say or ask messages at once", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
             say `Hi!`,
             ask `How are you?`,
         ], []);
-        jasmine.expect(dialogue.consume(this.postback)).toEqual(jasmine.arrayContaining([
+        const onCompleted = jasmine.createSpy('onCompleted')
+        jasmine.expect(await dialogue.consume(this.postback, onCompleted)).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: 'Hi!' }), 
             jasmine.objectContaining({ text: `How are you?` })
         ]));
-        jasmine.expect(dialogue.isComplete).toBe(true);
+        jasmine.expect(onCompleted).toHaveBeenCalled();
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete' }]);
     });
 
-    it("trims extranous whitespace", function(this: This) {
+    it("trims extranous whitespace", async function(this: This) {
         const [dialogue] = this.build(() => [
             say `Hi   
             there!`
         ], []);
-        jasmine.expect(dialogue.consume(this.postback)).toEqual(jasmine.arrayContaining([jasmine.objectContaining({ text: 'Hi \nthere!' })]));
+        jasmine.expect(await dialogue.consume(this.postback, () => {})).toEqual(jasmine.arrayContaining([jasmine.objectContaining({ text: 'Hi \nthere!' })]));
     });
 
-    it("throws an exception on script with duplicate expect statements", function(this: This) {
+    it("throws an exception on script with duplicate expect statements", async function(this: This) {
         const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
         try {
             this.build(() => [
@@ -177,7 +179,7 @@ describe("Dialogue", () => {
         }
     });
 
-    it("throws an exception on expect statement not followed by a response handler", function(this: This) {
+    it("throws an exception on expect statement not followed by a response handler", async function(this: This) {
         const test = (script: Script) => {
         const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
             try {
@@ -199,7 +201,7 @@ describe("Dialogue", () => {
         ]);
     });
 
-    it("throws an exception on a response handler not preceeded by an expect statement", function(this: This) {
+    it("throws an exception on a response handler not preceeded by an expect statement", async function(this: This) {
         const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
         try {
             this.build(() => [
@@ -214,37 +216,38 @@ describe("Dialogue", () => {
         }
     });
 
-    it("pauses on expect to wait for a response", function(this: This) {
+    it("pauses on expect to wait for a response", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
             ask `How are you?`, 
             expect `I feel`, {},
             say `Don't say this`
         ], []);
-        const result = dialogue.consume(this.postback);
+        const onCompleted = jasmine.createSpy('onCompleted')
+        const result = await dialogue.consume(this.postback, onCompleted);
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: 'How are you?' })
         ]));
         jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Don't say this` })
         ]));
-        jasmine.expect(dialogue.isComplete).toBe(false);
+        jasmine.expect(onCompleted).not.toHaveBeenCalled();
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: 'I feel'}]);
     });
 
-    it("resumes where it paused on recieving a response", function(this: This) {
+    it("resumes where it paused on recieving a response", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
             ask `How are you?`, 
             expect `I feel`, {
                 [onText](text: string): void {}
             },
         ], [{ type: 'expect', name: `I feel` }]);
-        jasmine.expect(dialogue.isComplete).toBe(false);
-        jasmine.expect(dialogue.consume(this.message('Amazing'))).toEqual([]);
-        jasmine.expect(dialogue.isComplete).toBe(true);
+        const onCompleted = jasmine.createSpy('onCompleted')
+        jasmine.expect(await dialogue.consume(this.message('Amazing'), onCompleted)).toEqual([]);
+        jasmine.expect(onCompleted).toHaveBeenCalled();
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete'}, { type: 'expect', name: 'I feel'}]);
     });
     
-    it("attaches any quick replies defined in response handler to last message", function(this: This) {
+    it("attaches any quick replies defined in response handler to last message", async function(this: This) {
         const [dialogue] = this.build(() => [
             say `Hi!`,
             ask `How are you?`, 
@@ -253,7 +256,7 @@ describe("Dialogue", () => {
                 'Crap': () => {}
             },
         ], []);
-        jasmine.expect(dialogue.consume(this.postback)).toEqual(jasmine.arrayContaining([
+        jasmine.expect(await dialogue.consume(this.postback, () => {})).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: 'Hi!' }), 
             jasmine.objectContaining({ text: `How are you?`, quick_replies:[
                 jasmine.objectContaining({ title: 'Great' }), 
@@ -262,45 +265,46 @@ describe("Dialogue", () => {
         ]));
     });
 
-    it("attaches location quick reply if defined in response handler", function(this: This) {
+    it("attaches location quick reply if defined in response handler", async function(this: This) {
         const [dialogue] = this.build(() => [
             ask `Where are you?`, 
             expect `I am here`, {
                 [location]: () => {}
             },
         ], []);
-        jasmine.expect(dialogue.consume(this.postback)).toEqual(jasmine.arrayContaining([
+        jasmine.expect(await dialogue.consume(this.postback, () => {})).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Where are you?`, quick_replies:[
                 jasmine.objectContaining({ content_type: 'location' }), 
             ]})
         ]));
     });
 
-    it("invokes a quick reply's handler on recieving the reply", function(this: This) {
+    it("invokes a quick reply's handler on recieving the reply", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['Amazing'])
         const [dialogue] = this.build(() => [
             ask `How are you?`, 
             expect `I feel`, 
             handler
         ], [{ type: 'expect', name: `I feel` }]);
-        dialogue.consume(this.message('Amazing'))
+        await dialogue.consume(this.message('Amazing'), () => {})
         jasmine.expect(handler.Amazing).toHaveBeenCalled();
     });
 
-    it("supports empty handlers", function(this: This) {
+    it("supports empty handlers", async function(this: This) {
         const [dialogue] = this.build(() => [
             ask `How are you?`, 
             expect `I feel`, {},
             say `I don't care much`, 
         ], [{ type: 'expect', name: `I feel` }]);
-        const result = dialogue.consume(this.message('Great'));
+        const onCompleted = jasmine.createSpy('onCompleted')
+        const result = await dialogue.consume(this.message('Great'), onCompleted);
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `I don't care much` })
         ]));
-        jasmine.expect(dialogue.isComplete).toBe(true);
+        jasmine.expect(onCompleted).toHaveBeenCalled();
     });
 
-    it("supports null handlers", function(this: This) {
+    it("supports null handlers", async function(this: This) {
         const [dialogue] = this.build(() => [
             ask `How are you?`, 
             expect `I feel`, {
@@ -319,13 +323,13 @@ describe("Dialogue", () => {
                 [onLocation]: null
             },
         ], [{ type: 'expect', name: `I feel` }]);
-        dialogue.consume(this.message('Amazing')) //I feel
-        dialogue.consume(this.message('My tests are passing')) //I feel that way because
-        dialogue.consume(this.location(50, 1, 'Work')) //I am at        
-        dialogue.consume(this.location(51, 1, 'The moon')) //I want to go to
+        await dialogue.consume(this.message('Amazing'), () => {}) //I feel
+        await dialogue.consume(this.message('My tests are passing'), () => {}) //I feel that way because
+        await dialogue.consume(this.location(50, 1, 'Work'), () => {}) //I am at        
+        await dialogue.consume(this.location(51, 1, 'The moon'), () => {}) //I want to go to
     });
 
-    it("throws an error when both location and onLocation specified on a handler", function(this: This) {
+    it("throws an error when both location and onLocation specified on a handler", async function(this: This) {
         const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
         try {
             this.build(() => [
@@ -342,7 +346,7 @@ describe("Dialogue", () => {
         }
     });
 
-    it("prefers a quick reply handler to the onText handler", function(this: This) {
+    it("prefers a quick reply handler to the onText handler", async function(this: This) {
         const [dialogue] = this.build(() => [
             ask `How are you?`, 
             expect `I feel`, {
@@ -350,10 +354,10 @@ describe("Dialogue", () => {
                 [onText]: () => fail('Should not be called')
             },
         ], [{ type: 'expect', name: `I feel` }]);
-        dialogue.consume(this.message('Amazing'))
+        await dialogue.consume(this.message('Amazing'), () => {})
     });
     
-    it("invokes the location handler on recieving a location quick reply", function(this: This) {
+    it("invokes the location handler on recieving a location quick reply", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['location'])
         const [dialogue] = this.build(() => [
             ask `Where are you?`,
@@ -361,11 +365,11 @@ describe("Dialogue", () => {
                 [location]: (lat: number, long: number, title?: string, url?: string) => handler.location(lat, long, title, url)
             },
         ], [{ type: 'expect', name: `I am here` }]);
-        dialogue.consume(this.location(50, 1, 'Mock', "localhost"))
+        await dialogue.consume(this.location(50, 1, 'Mock', "localhost"), () => {})
         jasmine.expect(handler.location).toHaveBeenCalledWith(50, 1, 'Mock', "localhost");
     });
 
-    it("invokes the onText handler on recieving a text response", function(this: This) {
+    it("invokes the onText handler on recieving a text response", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['onText'])
         const [dialogue] = this.build(() => [
             ask `How are you?`,
@@ -373,11 +377,11 @@ describe("Dialogue", () => {
                 [onText]: (text: string) => handler.onText(text)
             },
         ], [{ type: 'expect', name: `I feel` }]);
-        dialogue.consume(this.message('Amazing'))
+        await dialogue.consume(this.message('Amazing'), () => {})
         jasmine.expect(handler.onText).toHaveBeenCalledWith('Amazing');
     });
 
-    it("invokes the onLocation handler on recieving a location response", function(this: This) {
+    it("invokes the onLocation handler on recieving a location response", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['onLocation'])
         const [dialogue] = this.build(() => [
             ask `Where are you?`,
@@ -385,11 +389,11 @@ describe("Dialogue", () => {
                 [onLocation]: (lat: number, long: number, title?: string, url?: string) => handler.onLocation(lat, long, title, url)
             },
         ], [{ type: 'expect', name: `I am here` }]);
-        dialogue.consume(this.location(50, 1, 'Mock', "localhost"))
+        await dialogue.consume(this.location(50, 1, 'Mock', "localhost"), () => {})
         jasmine.expect(handler.onLocation).toHaveBeenCalledWith(50, 1, 'Mock', "localhost");
     });
 
-    it("invokes the onImage handler on recieving an image response", function(this: This) {
+    it("invokes the onImage handler on recieving an image response", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['onImage'])
         const [dialogue] = this.build(() => [
             ask `What do you look like?`,
@@ -397,11 +401,11 @@ describe("Dialogue", () => {
                 [onImage]: (url: string) => handler.onImage(url)
             },
         ], [{ type: 'expect', name: `I look like` }]);
-        dialogue.consume(this.multimedia("image", "photo.jpg"));
+        await dialogue.consume(this.multimedia("image", "photo.jpg"), () => {});
         jasmine.expect(handler.onImage).toHaveBeenCalledWith("photo.jpg");
     });
 
-    it("invokes the onVideo handler on recieving an video response", function(this: This) {
+    it("invokes the onVideo handler on recieving an video response", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['onVideo'])
         const [dialogue] = this.build(() => [
             ask `What do you move like?`,
@@ -409,11 +413,11 @@ describe("Dialogue", () => {
                 [onVideo]: (url: string) => handler.onVideo(url)
             },
         ], [{ type: 'expect', name: `I move like` }]);
-        dialogue.consume(this.multimedia("video", "video.mpg"));
+        await dialogue.consume(this.multimedia("video", "video.mpg"), () => {});
         jasmine.expect(handler.onVideo).toHaveBeenCalledWith("video.mpg");
     });
 
-    it("invokes the onAudio handler on recieving an audio response", function(this: This) {
+    it("invokes the onAudio handler on recieving an audio response", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['onAudio'])
         const [dialogue] = this.build(() => [
             ask `What do you sound like?`,
@@ -421,11 +425,11 @@ describe("Dialogue", () => {
                 [onAudio]: (url: string) => handler.onAudio(url)
             },
         ], [{ type: 'expect', name: `I sound like` }]);
-        dialogue.consume(this.multimedia("audio", "recording.wav"));
+        await dialogue.consume(this.multimedia("audio", "recording.wav"), () => {});
         jasmine.expect(handler.onAudio).toHaveBeenCalledWith("recording.wav");
     });
 
-    it("invokes the onFile handler on recieving an file response", function(this: This) {
+    it("invokes the onFile handler on recieving an file response", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['onFile'])
         const [dialogue] = this.build(() => [
             ask `What do you write like?`,
@@ -433,11 +437,11 @@ describe("Dialogue", () => {
                 [onFile]: (url: string) => handler.onFile(url)
             },
         ], [{ type: 'expect', name: `I write like` }]);
-        dialogue.consume(this.multimedia("file", "word.doc"));
+        await dialogue.consume(this.multimedia("file", "word.doc"), () => {});
         jasmine.expect(handler.onFile).toHaveBeenCalledWith("word.doc");
     });
 
-    it("handles unexpected response types by repeating only the ask statements", function(this: This) {
+    it("handles unexpected response types by repeating only the ask statements", async function(this: This) {
         const [dialogue] = this.build(() => [
             ask `What do you write like?`,
             say `This won't be repeated`,
@@ -446,8 +450,9 @@ describe("Dialogue", () => {
                 [onFile]: (url: string) => null
             },
         ], [{ type: 'expect', name: `I write like` }]);
-        const result = dialogue.consume(this.multimedia("audio", "recording.wav"));
-        jasmine.expect(dialogue.isComplete).toBe(false);
+        const onCompleted = jasmine.createSpy('onCompleted')
+        const result = await dialogue.consume(this.multimedia("audio", "recording.wav"), onCompleted);
+        jasmine.expect(onCompleted).not.toHaveBeenCalled();
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Sorry, I didn't quite catch that, I was expecting a file` }),
             jasmine.objectContaining({ text: `What do you write like?` }),
@@ -455,13 +460,13 @@ describe("Dialogue", () => {
         ]));
     });
 
-    it("does not send labels as messages", function(this: This) {
+    it("does not send labels as messages", async function(this: This) {
         const [dialogue] = this.build(() => [
             say `Hi!`,
             'label',
             ask `How are you?`,
         ], []);
-        const result = dialogue.consume(this.postback);
+        const result = await dialogue.consume(this.postback, () => {});
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: 'Hi!' }), 
             jasmine.objectContaining({ text: `How are you?` })
@@ -471,7 +476,7 @@ describe("Dialogue", () => {
         ]));
     });
 
-    it("respects inline gotos", function(this: This) {
+    it("respects inline gotos", async function(this: This) {
         const [dialogue] = this.build(() => [
             say `Hi!`,
             goto `label`,
@@ -479,7 +484,7 @@ describe("Dialogue", () => {
             'label',
             ask `How are you?`,
         ], []);
-        const result = dialogue.consume(this.postback);
+        const result = await dialogue.consume(this.postback, () => {});
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: 'Hi!' }), 
             jasmine.objectContaining({ text: `How are you?` })
@@ -489,7 +494,7 @@ describe("Dialogue", () => {
         ]));
     });
 
-    it("respects gotos retuned from response handlers", function(this: This) {
+    it("respects gotos retuned from response handlers", async function(this: This) {
         const [dialogue] = this.build(() => [
             ask `How are you?`,
             expect `I feel`, {
@@ -499,7 +504,7 @@ describe("Dialogue", () => {
             'label',
             say `Goodbye`,
         ], [{ type: 'expect', name: `I feel` }]);
-        const result = dialogue.consume(this.message('Amazing'));
+        const result = await dialogue.consume(this.message('Amazing'), () => {});
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: 'Goodbye' }), 
         ]));
@@ -508,7 +513,7 @@ describe("Dialogue", () => {
         ]));
     });
     
-    it("throws an exception on calling goto with a missing label", function(this: This) {
+    it("throws an exception on calling goto with a missing label", async function(this: This) {
         const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
         try {
             const [dialogue] = this.build(() => [
@@ -516,7 +521,7 @@ describe("Dialogue", () => {
                 goto `label`,
                 ask `How are you?`,
             ], [], storage);
-            dialogue.consume(this.postback);
+            await dialogue.consume(this.postback, () => {});
             fail('Did not throw')
         } catch(e) {
             jasmine.expect(e).toEqual(jasmine.stringMatching('Could not find label'));
@@ -524,7 +529,7 @@ describe("Dialogue", () => {
         }
     });
 
-    it("throws an exception on script with duplicate labels", function(this: This) {
+    it("throws an exception on script with duplicate labels", async function(this: This) {
         const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
         try {
             this.build(() => [
@@ -540,7 +545,7 @@ describe("Dialogue", () => {
         }
     });
 
-    it("aborts a goto that causes an endless loop", function(this: This) {
+    it("aborts a goto that causes an endless loop", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
             say `Hi!`,
             'label',
@@ -548,7 +553,7 @@ describe("Dialogue", () => {
             goto `label`,
         ], []);
         try {
-            dialogue.consume(this.postback)
+            await dialogue.consume(this.postback, () => {})
             fail('Did not throw')
         } catch(e) {
             jasmine.expect(e).toEqual(jasmine.stringMatching('Endless loop detected'));
@@ -556,7 +561,7 @@ describe("Dialogue", () => {
         }
     });
     
-    it("resumes from the correct line when a goto skips a response handler", function(this: This) {
+    it("resumes from the correct line when a goto skips a response handler", async function(this: This) {
         const [dialogue] = this.build(() => [
             ask `How are you?`,
             expect `I feel`, {
@@ -572,15 +577,17 @@ describe("Dialogue", () => {
                 [location]: null
             },
         ], [{ type: 'expect', name: `I feel` }]);
-        dialogue.consume(this.message('Amazing'))
-        const result = dialogue.consume(this.location(50, 1));
-        jasmine.expect(dialogue.isComplete).toBe(true);
+        const onCompleted = jasmine.createSpy('onCompleted')
+        await dialogue.consume(this.message('Amazing'), onCompleted)
+        jasmine.expect(onCompleted).not.toHaveBeenCalled();
+        const result = await dialogue.consume(this.location(50, 1), onCompleted);
+        jasmine.expect(onCompleted).toHaveBeenCalled();
         jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `But why?` })
         ]));
     });
 
-    it("resets the dialogue when user sends a restart keyword", function(this: This) {
+    it("resets the dialogue when user sends a restart keyword", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
             ask `How are you?`,
             expect `I feel`, {
@@ -592,15 +599,16 @@ describe("Dialogue", () => {
             },
         ], [{ type: 'expect', name: `I feel` }, { type: 'expect', name: `I feel that way because` }]);
         dialogue.setKeywordHandler('start over', 'restart')
-        const result = dialogue.consume(this.message('Start over'))
-        jasmine.expect(dialogue.isComplete).toBe(false);
+        const onCompleted = jasmine.createSpy('onCompleted')
+        const result = await dialogue.consume(this.message('Start over'), onCompleted)
+        jasmine.expect(onCompleted).not.toHaveBeenCalled();
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: 'I feel' }]);
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `How are you?` })
         ]));
     });
 
-    it("returns to previously asked question when user sends a undo keyword", function(this: This) {
+    it("returns to previously asked question when user sends a undo keyword", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
             say `Don't repeat this on undo`,
             ask `How are you?`,
@@ -618,8 +626,9 @@ describe("Dialogue", () => {
             'end',
         ], [{ type: 'complete'}, { type: 'label', name: `end` }, { type: 'expect', name: `I feel that way because` }, { type: 'expect', name: `I feel` }]);
         dialogue.setKeywordHandler('back', 'undo')
-        const result = dialogue.consume(this.message('back'))
-        jasmine.expect(dialogue.isComplete).toBe(false);
+        const onCompleted = jasmine.createSpy('onCompleted')
+        const result = await dialogue.consume(this.message('back'), onCompleted)
+        jasmine.expect(onCompleted).not.toHaveBeenCalled();
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: `I feel` }]);
         jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Don't repeat this on undo` })
@@ -629,7 +638,7 @@ describe("Dialogue", () => {
         ]));
     });
 
-    it("supports a user sending an undo or restart keyword at the start of a dialogue", function(this: This) {
+    it("supports a user sending an undo or restart keyword at the start of a dialogue", async function(this: This) {
         const [dialogue] = this.build(() => [
             ask `How are you?`,
             expect `I feel`, {
@@ -638,13 +647,14 @@ describe("Dialogue", () => {
         ], []);
         dialogue.setKeywordHandler('start over', 'restart')
         dialogue.setKeywordHandler('back', 'undo')
-        jasmine.expect(dialogue.consume(this.message('start over'))).toEqual(jasmine.arrayContaining([
+        const onCompleted = jasmine.createSpy('onCompleted')
+        jasmine.expect(await dialogue.consume(this.message('start over'), onCompleted)).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `How are you?` })
         ]));
-        jasmine.expect(dialogue.isComplete).toBe(false);
-        jasmine.expect(dialogue.consume(this.message('back'))).toEqual(jasmine.arrayContaining([
+        jasmine.expect(onCompleted).not.toHaveBeenCalled();
+        jasmine.expect(await dialogue.consume(this.message('back'), onCompleted)).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `How are you?` })
         ]));
-        jasmine.expect(dialogue.isComplete).toBe(false);
+        jasmine.expect(onCompleted).not.toHaveBeenCalled();
     });
 });
