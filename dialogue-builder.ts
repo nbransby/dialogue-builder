@@ -166,10 +166,10 @@ export class Dialogue<T> {
                         this.outputType = Ask;
                     }
                 }
-                return await processor.onNext(output.filter(e => e instanceof this.outputType), element, handler);                             
+                return processor.onNext(output.filter(e => e instanceof this.outputType), element, handler);                             
             }
         }
-        return await processor.onComplete(output);
+        return processor.onComplete(output);
     }     
 
     private static handle<T>(handler: ResponseHandler, invoke: (method: Function) => T, ...keys: Array<string | symbol>): T | undefined {
@@ -186,7 +186,7 @@ export class Dialogue<T> {
             if(goto) this.state.jump(goto, message.text.toLowerCase());
         }
         if(this.state.isComplete) {
-            return [];
+            throw [];
         }
         return this.process(this.script, {
             onLast: (handler: ResponseHandler) => {
@@ -244,12 +244,14 @@ class State {
     }
 
     async retrieveState() {
-        this.state = await this.storage.retrieve() as any || [];
-        this.lastAsked = this.stateChanged();
+        if(!this.state) {
+            this.state = await this.storage.retrieve() as any || [];
+            this.lastAsked = this.stateChanged();
+        }
     }
 
     private stateChanged(): string | undefined {
-        const asked = this.state.filter(s => s.type == 'expect').map(s => s.name!)
+        const asked = this.state.filter(s => s.type !== 'label').map(s => s.name!)
         this.asked = new Set(asked);
         const label = this.state.find(s => s.type == 'label');
         this.startLabel = label && label.name;

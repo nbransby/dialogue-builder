@@ -1,5 +1,11 @@
+
 import { Dialogue, dialogue, Storage, Script, goto, say, ask, expect, onText, location, onLocation, onFile, onAudio, onImage, onVideo } from './dialogue-builder'
 import { Message } from 'claudia-bot-builder'
+
+Object.defineProperty(global, 'jasmineRequire', {
+    value: { interface: () => {} }
+});
+import 'jasmine-promises'
 
 describe("Dialogue", () => {
     
@@ -112,7 +118,7 @@ describe("Dialogue", () => {
                 'start',
                 'end'
             ], [], storage);
-            fail('Did not throw')
+            fail('Did not throw');
         } catch(e) {
             jasmine.expect(e).toEqual(jasmine.stringMatching('Dialogue cannot be empty'));
             jasmine.expect(storage.store).not.toHaveBeenCalled();
@@ -129,7 +135,7 @@ describe("Dialogue", () => {
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete' }]);
     });
         
-    it("return no messages on consume when complete", async function(this: This) {
+    it("throws empty array on consume when complete", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
             say `Hi!`
         ], []);
@@ -137,9 +143,14 @@ describe("Dialogue", () => {
         await dialogue.consume(this.postback, onComplete)
         jasmine.expect(onComplete).toHaveBeenCalled();
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete' }]);
-        jasmine.expect(await dialogue.consume(this.message('Hi'), onComplete)).toEqual([]);
-        jasmine.expect(onComplete).toHaveBeenCalledTimes(1);
-        jasmine.expect(storage.store).toHaveBeenCalledTimes(1);
+        try {
+            await dialogue.consume(this.message('Hi'), onComplete);
+            fail('Did not throw');
+        } catch(e) {
+            jasmine.expect(e).toEqual([]);
+            jasmine.expect(onComplete).toHaveBeenCalledTimes(1);
+            jasmine.expect(storage.store).toHaveBeenCalledTimes(1);
+        }
     });
         
     it("sends muliple say or ask messages at once", async function(this: This) {
@@ -618,14 +629,9 @@ describe("Dialogue", () => {
             },
             ask `But why?`, 
             expect `I feel that way because`, {
-                'Just cos': goto `end`
+                'Just cos': null
             },
-            ask `Where are you?`, 
-            expect `I am at`, {
-                [location]: null
-            },
-            'end',
-        ], [{ type: 'complete'}, { type: 'label', name: `end` }, { type: 'expect', name: `I feel that way because` }, { type: 'expect', name: `I feel` }]);
+        ], [{ type: 'expect', name: `I feel that way because` }, { type: 'expect', name: `I feel` }]);
         dialogue.setKeywordHandler('back', 'undo')
         const onComplete = jasmine.createSpy('onComplete')
         const result = await dialogue.consume(this.message('back'), onComplete)
@@ -634,6 +640,53 @@ describe("Dialogue", () => {
         jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Don't repeat this on undo` })
         ]));
+        jasmine.expect(result).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: `How are you?` })
+        ]));
+    });
+
+    it("returns to last asked question when user sends a undo keyword when complete", async function(this: This) {
+        const [dialogue, storage] = this.build(() => [
+            ask `How are you?`,
+            expect `I feel`, {
+                'Amazing': null
+            },
+            ask `But why?`, 
+            expect `I feel that way because`, {
+                'Just cos': null
+            },
+        ], [{type: 'complete'}, { type: 'expect', name: `I feel that way because` }, { type: 'expect', name: `I feel` }]);
+        dialogue.setKeywordHandler('back', 'undo')
+        const onComplete = jasmine.createSpy('onComplete')
+        const result = await dialogue.consume(this.message('back'), onComplete)
+        jasmine.expect(onComplete).not.toHaveBeenCalled();
+        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: `I feel that way because` }, { type: 'expect', name: `I feel` }]);
+        jasmine.expect(result).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: `But why?` })
+        ]));
+    });
+
+    it("accounts for skipped questions due to goto statements when user sends a undo keyword", async function(this: This) {
+        const [dialogue, storage] = this.build(() => [
+            ask `How are you?`,
+            expect `I feel`, {
+                'Amazing': goto `why`
+            },
+            ask `Where are you?`, 
+            expect `I am at`, {
+                [location]: null
+            },
+            'why',
+            ask `But why?`, 
+            expect `I feel that way because`, {
+                'Just cos': goto `end`
+            },
+        ], [{ type: 'expect', name: `I feel that way because` }, { type: 'label', name: `why` }, { type: 'expect', name: `I feel` }]);
+        dialogue.setKeywordHandler('back', 'undo')
+        const onComplete = jasmine.createSpy('onComplete')
+        const result = await dialogue.consume(this.message('back'), onComplete)
+        jasmine.expect(onComplete).not.toHaveBeenCalled();
+        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: `I feel` }]);
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `How are you?` })
         ]));
