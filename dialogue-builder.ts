@@ -219,7 +219,7 @@ export class Dialogue<T> {
                 const messages = output.reduce((r, e) => [...r, new Pause(), new Text(e.toString())], [] as Array<Pause|Text>) as Text[];
                 if(handler[location]) messages[messages.length - 1].addQuickReplyLocation();
                 Object.keys(handler).forEach(key => messages[messages.length - 1].addQuickReply(key, key));
-                return messages.map(text => text.get());
+                return messages.map(text => text.setNotificationType('NO_PUSH').get());
             },
             onComplete: async (output) => {
                 //persist completion 

@@ -36,16 +36,21 @@ declare module "claudia-bot-builder" {
         }
 
         namespace fbTemplate {
-            class Text {
-                constructor(text: string)
-                addQuickReply(title: string, payload: string, image?: string): Text
-                addQuickReplyLocation(): Text
+
+            class FacebookTemplate {
                 get(): string 
+                setNotificationType(type: 'REGULAR'|'SILENT_PUSH'|'NO_PUSH'): this
+                addQuickReply(title: string, payload: string, image?: string): this
+                addQuickReplyLocation(): this
+
             }
 
-            class Pause {
+            class Text extends FacebookTemplate {
+                constructor(text: string)
+            }
+
+            class Pause extends FacebookTemplate {
                 constructor(duration?: number)
-                get(): string 
             }
 
             interface Request {
@@ -53,6 +58,7 @@ declare module "claudia-bot-builder" {
                 recipient: { id: string }
                 timestamp: number
                 message: Message
+                read?: { watermark: number, seq: number }
             }
 
             interface Message {
