@@ -88,7 +88,7 @@ export interface Storage {
 }
 
 
-type Processor = { onLast: (handler: ResponseHandler) => void | Goto, onNext: (output: Output[], expect: Expect, handler: ResponseHandler) => Promise<string[]>, onComplete: (output: Output[]) => Promise<string[]> }
+type Processor = { onLast: (handler: ResponseHandler) => void | Goto, onNext: (output: Output, expect: Expect, handler: ResponseHandler) => Promise<string[]>, onComplete: (output: Output) => Promise<string[]> }
 
 
 export class Dialogue<T> {
@@ -102,13 +102,13 @@ export class Dialogue<T> {
         this.keywords = new Map();
         this.outputType = Output;
         const labels = new Map();
-        const expects = new Set();
+        const expects = new Map();
         const gotos: {line: number, label: string}[] = [];
         for(let line = 0; line < this.script.length; line++) {
             const value = this.script[line];
             if(value instanceof Expect) {
                 if(expects.has(value.toString())) throw new Error(`Duplicate expect statement found on line ${line}: expect \`${value}\``);
-                expects.add(value.toString());   
+                expects.set(value.toString(), line);   
                 const handler = this.script[++line];
                 if(!handler || handler instanceof Statement) throw new Error("Expect statement must be followed by a response handler on line ${line}: expect \`${value}\``");
                 if(handler.hasOwnProperty(location) && handler.hasOwnProperty(onLocation)) throw new Error("Both location and onLocation implemented in the same response handler on line ${line}: expect \`${value}\``");
@@ -124,7 +124,7 @@ export class Dialogue<T> {
         if(labels.size == this.script.length) throw new Error('Dialogue cannot be empty');
         const goto = gotos.find(g => !labels.has(g.label));
         if(goto) new Error(`Could not find label referenced on line ${goto.line}: goto \`${goto.label}\``);
-        this.state = new State(storage, labels);
+        this.state = new State(storage, labels, expects);
     }
 
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)) {
@@ -137,38 +137,35 @@ export class Dialogue<T> {
         keys.forEach(k => this.keywords.set(k, h));
     }
     
-    private async process(dialogue: Script, processor: Processor): Promise<string[]> {
-        const output: Output[] = []
-        for(let i = this.state.startLine; i < dialogue.length; i++) {
-            const element = dialogue[i];
-            //if element is an inline goto
-            if(element instanceof Goto) {
-                i = this.state.jump(element, i);
-                continue;
-            }
-            //skip messages
-            if(element instanceof Output) {
-                output.push(element)
-            } else if(element instanceof Expect) {
-                const handler = dialogue[++i];
+    private async process(dialogue: Script, line: number, processor: Processor): Promise<string[]> {
+        const element: Output|Goto|Expect = dialogue[line];
+        switch(element.constructor) {
+            case Goto:
+                return this.process(dialogue, this.state.jump(element, line), processor);
+            case Expect: {
+                const handler = dialogue[line+1];
                 //if has already been asked
                 if(this.state.isAsked(element)) {
                     try {
                         if(this.state.isLastAsked(element)) {
                             const goto = processor.onLast(handler);
-                            i = goto ? this.state.jump(goto, i) : i;
+                            if(goto) return this.process(dialogue, this.state.jump(goto, line), processor);
                         }
                         output.length = 0;
                         continue;
                     } catch(e) {
                         if(!(e instanceof UnexpectedInputError)) throw e;
-                        output.unshift(new Ask(e.message));
-                        this.outputType = Ask;
+                        this.state.undo();
+                        return [e.message];
                     }
                 }
                 return processor.onNext(output.filter(e => e instanceof this.outputType), element, handler);                             
             }
         }
+        if(element instanceof Goto) return this.process(dialogue, this.state.jump(element, line), processor);
+        if(element instanceof Output) {
+            r
+        } else if(element instanceof Expect) {
         return processor.onComplete(output);
     }     
 
@@ -188,7 +185,7 @@ export class Dialogue<T> {
         if(this.state.isComplete) {
             throw [];
         }
-        return this.process(this.script, {
+        return this.process(this.script, this.state.startLine, {
             onLast: (handler: ResponseHandler) => {
                 //if empty handler do nothing
                 if(Object.getOwnPropertyNames(handler).length == 0 && Object.getOwnPropertySymbols(handler).length == 0) return;
@@ -215,11 +212,11 @@ export class Dialogue<T> {
             onNext: async (output, expect, handler) => {
                 //persist asking of this question
                 await this.state.complete(expect);
-                //send messages and quick replies if present
-                const messages = output.reduce((r, e) => [...r, new Pause(), new Text(e.toString())], [] as Array<Pause|Text>) as Text[];
-                if(handler[location]) messages[messages.length - 1].addQuickReplyLocation();
-                Object.keys(handler).forEach(key => messages[messages.length - 1].addQuickReply(key, key));
-                return messages.map(text => text.setNotificationType('NO_PUSH').get());
+                //send reply and quick replies if present
+                const reply = new Text(output.toString()).setNotificationType('NO_PUSH');
+                if(handler[location]) reply.addQuickReplyLocation();
+                Object.keys(handler).forEach(key => reply.addQuickReply(key, key));
+                return message.originalRequest.read ? [new Pause().get(), reply.get()] : [reply.get()];
             },
             onComplete: async (output) => {
                 //persist completion 
@@ -233,30 +230,35 @@ export class Dialogue<T> {
 }
 
 class State {
-    private state: Array<{ type: 'label'|'expect'|'complete', name?: string }>
+    private state: Array<{ type: 'label'|'expect'|'complete', name?: string, offset?: number, repeated?: true }>
     private asked: Set<string>
-    private completed: boolean
-    private lastAsked: string | undefined
-    private startLabel: string | undefined
+    private line: number = 0
     private jumpCount = 0;
 
-    constructor(private storage: Storage, private labels: Map<string, number>) {
+    constructor(private storage: Storage, private labels: Map<string, number>, private expects: Map<string, number>) {
     }
 
     async retrieveState() {
         if(!this.state) {
             this.state = await this.storage.retrieve() as any || [];
-            this.lastAsked = this.stateChanged();
+            this.stateChanged();
         }
     }
 
-    private stateChanged(): string | undefined {
-        const asked = this.state.filter(s => s.type !== 'label').map(s => s.name!)
-        this.asked = new Set(asked);
-        const label = this.state.find(s => s.type == 'label');
-        this.startLabel = label && label.name;
-        this.completed = this.state.some(s => s.type == 'complete');
-        return asked[0];
+    private stateChanged(): void {
+        this.asked = new Set(this.state.filter(s => s.type === 'expect').map(s => s.name!));
+        this.line = 0;
+        this.state.some(state => { 
+            let line;
+            switch(state.type) {
+                case 'label':
+                    line = this.labels.get(state.name!)
+                    break;
+                case 'expect':
+                    line = this.expects.get(state.name!)
+            }
+            return (line && (this.line = line)) != undefined;
+        });
     }
 
     isAsked(expect: Expect): boolean {
@@ -264,19 +266,14 @@ class State {
         return this.asked.has(expect.toString());
     }
 
-    isLastAsked(expect: Expect): boolean {
-        assert(this.state);
-        return expect.toString() === this.lastAsked;
-    }
-
     get isComplete(): boolean {
         assert(this.state);
-        return this.completed;
+        return this.state[0] && this.state[0].type === 'complete';
     }
 
     get startLine(): number {
         assert(this.state);
-        return this.labels.get(this.startLabel!) || 0;
+        return this.line;
     }
 
     jump(goto: Goto, lineOrKeyword: number|string): number {
@@ -285,29 +282,28 @@ class State {
         if(!index) throw new Error(`Could not find label referenced ${typeof lineOrKeyword == 'number' ? 'on line' : 'by keyword'} '${lineOrKeyword}': goto \`${goto.toString()}\``);
         if(++this.jumpCount > 10) throw new Error(`Endless loop detected ${typeof lineOrKeyword == 'number' ? 'on line' : 'by keyword'} '${lineOrKeyword}': goto \`${goto.toString()}\``);
         // console.log(`Jumping to label '${goto.toString()}' on line ${index}`);
-        this.state.unshift({ type: 'label', name: goto.toString()})
-        this.startLabel = goto.toString();
+        this.state.unshift({ type: 'label', name: goto.toString(), offset: 0})
+        this.line = this.labels.get(goto.toString())!;
         return index;
     }
 
     async complete(expect?: Expect) {
         assert(this.state);
-        this.state.unshift(expect ? { type: 'expect', name: expect.toString()} : { type: 'complete'});
-        this.lastAsked = this.stateChanged();
+        this.state.unshift(expect ? { type: 'expect', name: expect.toString(), offset: 0} : { type: 'complete'});
+        this.stateChanged();
         await this.storage.store(this.state);
     }
     
     restart() {
         assert(this.state);
-        this.lastAsked = undefined;
         this.state.length = 0;
         this.stateChanged();
     }
 
     undo() {
         assert(this.state);
-        this.state.splice(0, this.state.findIndex((s, i) => s.type === 'expect' && s.name !== this.lastAsked || i + 1 === this.state.length) + 1);
-        this.lastAsked = undefined;
+        this.state.splice(0, this.state.findIndex((s, i) => s.type === 'expect' && this.expects.get(s.name!) !== this.line || i + 1 === this.state.length) + 1);
+        this.state[0] = this.state[0] && {...this.state[0], offset: 0, repeated: true };
         this.stateChanged();
     }
 }

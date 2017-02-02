@@ -97,7 +97,7 @@ describe("Dialogue", () => {
             jasmine.expect(context).toBe('mycontext');
             return [ say `Hi!`]
         }, [], undefined, 'mycontext');
-        await dialogue.consume(this.postback, )
+        await dialogue.consume(this.postback)
     });
 
     it("throws an exception on empty script given", async function(this: This) {

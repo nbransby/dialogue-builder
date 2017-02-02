@@ -5,17 +5,17 @@
   "main": "dialogue-builder.js",
   "types": "index.d.ts",
   "dependencies": {
-    "claudia-bot-builder": "^2.11.0"
+    "claudia-bot-builder": "../claudia-bot-builder"
   },
   "devDependencies": {
-    "@types/jasmine": "^2.5.40",
+    "@types/jasmine": "^2.5.41",
     "@types/node": "^7.0.4",
     "codecov": "^1.0.1",
     "gulp": "^3.9.1",
     "jasmine": "^2.5.2",
     "jasmine-promises": "^0.4.1",
     "line-number": "^0.1.0",
-    "nyc": "^10.0.0",
+    "nyc": "^10.1.2",
     "typescript": "^2.1.4"
   },
   "scripts": {
