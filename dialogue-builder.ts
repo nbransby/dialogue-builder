@@ -1,8 +1,10 @@
 import assert = require('assert');
+import { Request } from 'claudia-api-builder'
 import builder = require('claudia-bot-builder')
 import Message = builder.Message;
 import Text = builder.fbTemplate.Text;
 import Pause = builder.fbTemplate.Pause;
+import ChatAction = builder.fbTemplate.ChatAction;
 export const location = Symbol("a location")
 export const onText = Symbol("a typed response")
 export const onLocation = Symbol("a location")
@@ -178,7 +180,7 @@ export class Dialogue<T> {
         return handler[keys[0]] ? invoke(handler[keys[0]]) : undefined;
     }
 
-    async consume(message: Message, onComplete?: () => void): Promise<string[]> {
+    async consume(message: Message, apiRequest: Request, onComplete?: () => void): Promise<string[]> {
         await this.state.retrieveState()
         const keyword = this.keywords.get(message.text.toLowerCase())
         if(keyword) {
@@ -216,10 +218,26 @@ export class Dialogue<T> {
                 //persist asking of this question
                 await this.state.complete(expect);
                 //send messages and quick replies if present
-                const messages = output.reduce((r, e) => [...r, new Pause(), new Text(e.toString())], [] as Array<Pause|Text>) as Text[];
-                if(handler[location]) messages[messages.length - 1].addQuickReplyLocation();
-                Object.keys(handler).forEach(key => messages[messages.length - 1].addQuickReply(key, key));
-                return messages.map(text => text.setNotificationType('NO_PUSH').get());
+                const remaining = Math.min(14 * 1000, apiRequest.lambdaContext.getRemainingTimeInMillis());
+                const times = output.map((m, i) => i == 0 ? 0 : output[i-1].toString().match(/\w+/g)!.length * 250);
+                const factor = Math.min(1, remaining / times.reduce((total, time) => total + time + 250, 0));
+                let lastMessage: Text|undefined
+                const messages = output.reduce((r, e, i) => {
+                    return r.length == 0 ? [
+                            lastMessage = new Text(e.toString()).setNotificationType('NO_PUSH'),
+                            new Pause(250), 
+                        ] : [
+                            ...r, 
+                            new ChatAction('typing_on'),
+                            new Pause(times[i] * factor), 
+                            lastMessage = new Text(e.toString()).setNotificationType('NO_PUSH'),
+                            new Pause(250), 
+                        ]
+                }, [] as Array<{ get(): string }>);
+                if(handler[location]) lastMessage!.addQuickReplyLocation();
+                Object.keys(handler).forEach(key => lastMessage!.addQuickReply(key, key));
+                messages[messages.length - 1] = new ChatAction('typing_off');
+                return messages.map(message => message.get());
             },
             onComplete: async (output) => {
                 //persist completion 

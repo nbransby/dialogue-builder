@@ -1,3 +1,4 @@
+import { Request } from 'claudia-api-builder';
 import builder = require('claudia-bot-builder');
 import Message = builder.Message;
 export declare const location: symbol;
@@ -52,5 +53,5 @@ export declare class Dialogue<T> {
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void;
     private process(dialogue, processor);
     private static handle<T>(handler, invoke, ...keys);
-    consume(message: Message, onComplete?: () => void): Promise<string[]>;
+    consume(message: Message, apiRequest: Request, onComplete?: () => void): Promise<string[]>;
 }

@@ -10,7 +10,10 @@ declare module "claudia-api-builder" {
         env: { [key: string]: string }
         headers: { [key: string]: string }
         normalizedHeaders: { [key: string]: string }
-        lambdaContext: { callbackWaitsForEmptyEventLoop: boolean }
+        lambdaContext: { 
+            callbackWaitsForEmptyEventLoop: boolean 
+            getRemainingTimeInMillis: () => number
+        }
     }
 }
 
@@ -42,15 +45,20 @@ declare module "claudia-bot-builder" {
                 setNotificationType(type: 'REGULAR'|'SILENT_PUSH'|'NO_PUSH'): this
                 addQuickReply(title: string, payload: string, image?: string): this
                 addQuickReplyLocation(): this
-
             }
 
             class Text extends FacebookTemplate {
                 constructor(text: string)
             }
 
-            class Pause extends FacebookTemplate {
-                constructor(duration?: number)
+            class ChatAction {
+                constructor(action: 'typing_on'|'typing_off'|'mark_seen')                
+                get(): string 
+            }
+
+            class Pause  {
+                constructor(miliseconds?: number)
+                get(): string 
             }
 
             interface Request {
@@ -82,6 +90,7 @@ declare module "claudia-bot-builder" {
 
 
 declare module "dialogue-builder" {
+    import { Request } from 'claudia-api-builder';
     import builder = require('claudia-bot-builder');
     import Message = builder.Message;
     export const location: symbol;
@@ -136,6 +145,6 @@ declare module "dialogue-builder" {
         setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void;
         private process(dialogue, processor);
         private static handle<T>(handler, invoke, ...keys);
-        consume(message: Message, onComplete?: () => void): Promise<string[]>;
+        consume(message: Message, apiRequest: Request, onComplete?: () => void): Promise<string[]>;
     }
 }
