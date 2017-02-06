@@ -51,6 +51,19 @@ declare module "claudia-bot-builder" {
                 constructor(text: string)
             }
 
+            class List extends FacebookTemplate {
+                constructor(topElementStyle: 'large'|'compact')
+                addBubble(title: string, subtitle?: string): this
+                addDefaultAction(url: string): this
+                addImage(url: string): this
+                addImage(url: string, subtitle?: string): this
+                addButton(title: string, value: string): this
+                addListButton(title: string, value: string): this
+                addShareButton(): this
+                getFirstBubble(): string 
+                getLastBubble(): { title: string, subtitle: string } 
+            }
+
             class ChatAction {
                 constructor(action: 'typing_on'|'typing_off'|'mark_seen')                
                 get(): string 
