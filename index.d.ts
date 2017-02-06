@@ -53,6 +53,7 @@ declare module "claudia-bot-builder" {
 
             class List extends FacebookTemplate {
                 constructor(topElementStyle: 'large'|'compact')
+                bubbles: Array<{ image_url?: string }>
                 addBubble(title: string, subtitle?: string): this
                 addDefaultAction(url: string): this
                 addImage(url: string): this
@@ -106,6 +107,7 @@ declare module "dialogue-builder" {
     import { Request } from 'claudia-api-builder';
     import builder = require('claudia-bot-builder');
     import Message = builder.Message;
+    import List = builder.fbTemplate.List;
     export const location: symbol;
     export const onText: symbol;
     export const onLocation: symbol;
@@ -140,6 +142,11 @@ declare module "dialogue-builder" {
     export function ask(template: TemplateStringsArray, ...substitutions: string[]): Ask;
     export function expect(template: TemplateStringsArray, ...substitutions: string[]): Expect;
     export function goto(template: TemplateStringsArray, ...substitutions: string[]): Goto;
+    export type ButtonHandler = {
+        [title: string]: () => Goto | void;
+    };
+    export type Bubble = [string, string, string, ButtonHandler];
+    export function list(id: string, type: 'compact' | 'large', bubbles: Bubble[], handler: ButtonHandler): List;
     export function dialogue<T>(name: string, script: (...context: T[]) => Script): DialogueBuilder<T>;
     export interface DialogueBuilder<T> {
         (...context: T[]): Script;
@@ -154,6 +161,7 @@ declare module "dialogue-builder" {
         private readonly state;
         private readonly keywords;
         private outputType;
+        baseUrl: string;
         constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]);
         setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void;
         private process(dialogue, processor);

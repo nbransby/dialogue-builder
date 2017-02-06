@@ -110,6 +110,8 @@ export class Dialogue<T> {
     private readonly keywords: Map<string, () =>  void | Goto>
     private outputSay: boolean
 
+    public baseUrl: string
+
     constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]) {
         this.script = builder(...context);
         this.keywords = new Map();
@@ -215,15 +217,15 @@ export class Dialogue<T> {
                     switch(attachment.type) {
                         case 'location':
                             const invoke = (m: Function) => m(attachment.payload.coordinates!.lat, attachment.payload.coordinates!.long, attachment.payload.title, attachment.payload.url);
-                            return Dialogue.handle(handler, invoke, location, onLocation);
+                            return Dialogue.handle(handler, invoke, location, onLocation, defaultAction);
                         case 'image':
-                            return Dialogue.handle(handler, m => m(attachment.payload.url), onImage);
+                            return Dialogue.handle(handler, m => m(attachment.payload.url), onImage, defaultAction);
                         case 'audio':
-                            return Dialogue.handle(handler, m => m(attachment.payload.url), onAudio);
+                            return Dialogue.handle(handler, m => m(attachment.payload.url), onAudio, defaultAction);
                         case 'video':
-                            return Dialogue.handle(handler, m => m(attachment.payload.url), onVideo);
+                            return Dialogue.handle(handler, m => m(attachment.payload.url), onVideo, defaultAction);
                         case 'file':
-                            return Dialogue.handle(handler, m => m(attachment.payload.url), onFile);
+                            return Dialogue.handle(handler, m => m(attachment.payload.url), onFile, defaultAction);
                         default:
                             throw new Error(`Unsupported attachment type '${attachment.type}'`)
                     }
@@ -240,7 +242,7 @@ export class Dialogue<T> {
                 //get output and insert pauses
                 const messages = [new ChatAction('typing_on').get()];
                 output.forEach(message => messages.push(
-                    message.setNotificationType('NO_PUSH').get(), 
+                    message.setBaseUrl(this.baseUrl).setNotificationType('NO_PUSH').get(), 
                     new Pause(message.getReadingDuration() * factor).get()
                 ));
                 messages[messages.length-1] = new ChatAction('typing_off').get();
@@ -333,7 +335,8 @@ class State {
 declare module "claudia-bot-builder" {
     namespace fbTemplate {
         interface FacebookTemplate {
-            getReadingDuration: () => number;
+            getReadingDuration: () => number
+            setBaseUrl: (url: string) => this
         }
         interface Text {
             template: { text: string };
@@ -344,3 +347,8 @@ declare module "claudia-bot-builder" {
 FacebookTemplate.prototype.getReadingDuration = () => 1000;
 Text.prototype.getReadingDuration = function(this: Text) { return this.template.text.match(/\w+/g)!.length * 250; }
 
+FacebookTemplate.prototype.setBaseUrl = function(this: List, url: string) { return this }
+List.prototype.setBaseUrl = function(this: List, url: string) { 
+    this.bubbles.filter(b => b.image_url).forEach(b => b.image_url = url + b.image_url);
+    return this
+}

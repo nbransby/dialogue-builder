@@ -53,6 +53,7 @@ export declare class Dialogue<T> {
     private readonly state;
     private readonly keywords;
     private outputSay;
+    baseUrl: string;
     constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]);
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void;
     private process(dialogue, onComplete, processor);
@@ -63,6 +64,7 @@ declare module "claudia-bot-builder" {
     namespace fbTemplate {
         interface FacebookTemplate {
             getReadingDuration: () => number;
+            setBaseUrl: (url: string) => this;
         }
         interface Text {
             template: {
