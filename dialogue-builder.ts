@@ -2,9 +2,13 @@ import assert = require('assert');
 import { Request } from 'claudia-api-builder'
 import builder = require('claudia-bot-builder')
 import Message = builder.Message;
+import FacebookTemplate = builder.fbTemplate.FacebookTemplate
 import Text = builder.fbTemplate.Text;
 import Pause = builder.fbTemplate.Pause;
+import List = builder.fbTemplate.List;
 import ChatAction = builder.fbTemplate.ChatAction;
+
+export const defaultAction = Symbol("a default action")
 export const location = Symbol("a location")
 export const onText = Symbol("a typed response")
 export const onLocation = Symbol("a location")
@@ -33,36 +37,27 @@ class UndefinedHandlerError extends UnexpectedInputError {
     }
 }
 
-export type Label = String
-
-export class Statement {
+export class Directive {
     constructor(private readonly text: string) {}
 
     toString(): string {
         return this.text;
-    }
+    }    
 }
 
-export class Expect extends Statement {}
-export class Goto extends Statement {}
+export type Label = String
+export class Expect extends Directive {}
+export class Goto extends Directive {}
+export class Say extends Text {}
 
-export class Output extends Statement {
-    constructor(text: string) {
-        super(text.replace(/([\s]) +/g, '$1'));
-    }
-}
-
-export class Say extends Output {}
-export class Ask extends Output {}
-
-export type Script = Array<Label | Statement | ResponseHandler>
+export type Script = Array<FacebookTemplate | Label | Directive | ResponseHandler>
 
 export function say(template: TemplateStringsArray, ...substitutions: any[]): Say {
-    return new Say(String.raw(template, ...substitutions));
+    return new Say(String.raw(template, ...substitutions).replace(/([\s]) +/g, '$1'));
 }
 
-export function ask(template: TemplateStringsArray, ...substitutions: string[]): Ask {
-    return new Ask(String.raw(template, ...substitutions));
+export function ask(template: TemplateStringsArray, ...substitutions: string[]): Text {
+    return new Text(String.raw(template, ...substitutions).replace(/([\s]) +/g, '$1'));
 }
 
 export function expect(template: TemplateStringsArray, ...substitutions: string[]): Expect {
@@ -71,6 +66,22 @@ export function expect(template: TemplateStringsArray, ...substitutions: string[
 
 export function goto(template: TemplateStringsArray, ...substitutions: string[]): Goto {
     return new Goto(String.raw(template, ...substitutions));
+}
+
+export type ButtonHandler = { [title: string]: () =>  Goto | void}
+export type Bubble = [string, string, string, ButtonHandler]
+
+export function list(id: string, type: 'compact'|'large', bubbles: Bubble[], handler: ButtonHandler): List {
+    const list = new List(type);
+    bubbles.forEach((bubble, index) => {
+        const [title, subtitle, image, handler] = bubble;
+        list.addBubble(title, subtitle);
+        if(image) list.addImage(image);
+        if(handler[defaultAction]) list.addDefaultAction(`/list/${id}/bubble/${index}`)
+        Object.keys(handler).forEach((key, i) => list.addButton(key, `/list/${id}/bubble/${index}/button/${i}`));
+    });
+    Object.keys(handler).forEach((key, i) => list.addListButton(key, `/list/${id}/button/${i}`));
+    return list;
 }
 
 export function dialogue<T>(name: string, script: (...context: T[]) => Script): DialogueBuilder<T> {
@@ -90,19 +101,19 @@ export interface Storage {
 }
 
 
-type Processor = { onLast: (handler: ResponseHandler) => void | Goto, onNext: (output: Output[], expect: Expect, handler: ResponseHandler) => Promise<string[]>, onComplete: (output: Output[]) => Promise<string[]> }
+type Processor = { onLast: (handler: ResponseHandler) => void | Goto, onNext: (output: FacebookTemplate[], handler: ResponseHandler) => Promise<string[]> }
 
 
 export class Dialogue<T> {
     private readonly script: Script
     private readonly state: State
     private readonly keywords: Map<string, () =>  void | Goto>
-    private outputType: typeof Output
+    private outputSay: boolean
 
     constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]) {
         this.script = builder(...context);
         this.keywords = new Map();
-        this.outputType = Output;
+        this.outputSay = true;
         const labels = new Map();
         const expects = new Set();
         const gotos: {line: number, label: string}[] = [];
@@ -112,15 +123,15 @@ export class Dialogue<T> {
                 if(expects.has(value.toString())) throw new Error(`Duplicate expect statement found on line ${line}: expect \`${value}\``);
                 expects.add(value.toString());   
                 const handler = this.script[++line];
-                if(!handler || handler instanceof Statement) throw new Error("Expect statement must be followed by a response handler on line ${line}: expect \`${value}\``");
-                if(handler.hasOwnProperty(location) && handler.hasOwnProperty(onLocation)) throw new Error("Both location and onLocation implemented in the same response handler on line ${line}: expect \`${value}\``");
+                if(!handler || handler instanceof Directive|| handler instanceof FacebookTemplate) throw new Error(`Expect statement must be followed by a response handler on line ${line}: expect \`${value}\``);
+                if(handler.hasOwnProperty(location) && handler.hasOwnProperty(onLocation)) throw new Error(`Both location and onLocation implemented in the same response handler on line ${line}: expect \`${value}\``);
             } else if(typeof value === 'string') {
                 if(labels.has(value)) throw new Error(`Duplicate label found on line ${line}: '${value}'`);
                 labels.set(value, line);
             } else if(value instanceof Goto) {
                 gotos.push({line: line, label: value.toString()});
-            } else if(!(value instanceof Output)) {
-                throw new Error("Response handler must be preceeded by an expect statement on line ${line}: expect \`${value}\``")
+            } else if(!(value instanceof FacebookTemplate)) {
+                throw new Error(`Response handler must be preceeded by an expect statement on line ${line}: expect \`${value}\``)
             }
         }
         if(labels.size == this.script.length) throw new Error('Dialogue cannot be empty');
@@ -132,15 +143,15 @@ export class Dialogue<T> {
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)) {
         const keys = keywords instanceof Array ? keywords : [keywords];
         const undo = () => { 
-            this.outputType = Ask; 
+            this.outputSay = false; 
             this.state.undo();  
         }
         const h = handler === 'restart' ? () => this.state.restart() : handler === 'undo' ? undo : handler;
         keys.forEach(k => this.keywords.set(k, h));
     }
     
-    private async process(dialogue: Script, processor: Processor): Promise<string[]> {
-        const output: Output[] = []
+    private async process(dialogue: Script, onComplete: (() => void) | undefined, processor: Processor): Promise<string[]> {
+        const output: Array<FacebookTemplate> = []
         for(let i = this.state.startLine; i < dialogue.length; i++) {
             const element = dialogue[i];
             //if element is an inline goto
@@ -149,7 +160,7 @@ export class Dialogue<T> {
                 continue;
             }
             //skip messages
-            if(element instanceof Output) {
+            if(element instanceof FacebookTemplate && (this.outputSay || !(element instanceof Say))) {
                 output.push(element)
             } else if(element instanceof Expect) {
                 const handler = dialogue[++i];
@@ -164,14 +175,19 @@ export class Dialogue<T> {
                         continue;
                     } catch(e) {
                         if(!(e instanceof UnexpectedInputError)) throw e;
-                        output.unshift(new Ask(e.message));
-                        this.outputType = Ask;
+                        output.unshift(new Text(e.message));
+                        this.outputSay = false;
                     }
                 }
-                return processor.onNext(output.filter(e => e instanceof this.outputType), element, handler);                             
+                //persist asking of this question
+                await this.state.complete(element);
+                return output.length == 0 ? [] : processor.onNext(output, handler);                             
             }
         }
-        return processor.onComplete(output);
+        //persist completion 
+        await this.state.complete();
+        onComplete && onComplete();
+        return output.length == 0 ? [] : processor.onNext(output, {});
     }     
 
     private static handle<T>(handler: ResponseHandler, invoke: (method: Function) => T, ...keys: Array<string | symbol>): T | undefined {
@@ -190,7 +206,7 @@ export class Dialogue<T> {
         if(this.state.isComplete) {
             throw [];
         }
-        return this.process(this.script, {
+        return this.process(this.script, onComplete, {
             onLast: (handler: ResponseHandler) => {
                 //if empty handler do nothing
                 if(Object.getOwnPropertyNames(handler).length == 0 && Object.getOwnPropertySymbols(handler).length == 0) return;
@@ -214,38 +230,22 @@ export class Dialogue<T> {
                 }
                 return Dialogue.handle(handler, m => m(message.text), message.text, onText);
             },
-            onNext: async (output, expect, handler) => {
-                //persist asking of this question
-                await this.state.complete(expect);
-                //send messages and quick replies if present
-                const remaining = Math.min(14 * 1000, apiRequest.lambdaContext.getRemainingTimeInMillis());
-                const times = output.map((m, i) => i == 0 ? 0 : output[i-1].toString().match(/\w+/g)!.length * 250);
-                const factor = Math.min(1, remaining / times.reduce((total, time) => total + time + 250, 0));
-                let lastMessage: Text|undefined
-                const messages = output.reduce((r, e, i) => {
-                    return r.length == 0 ? [
-                            lastMessage = new Text(e.toString()).setNotificationType('NO_PUSH'),
-                            new Pause(250), 
-                        ] : [
-                            ...r, 
-                            new ChatAction('typing_on'),
-                            new Pause(times[i] * factor), 
-                            lastMessage = new Text(e.toString()).setNotificationType('NO_PUSH'),
-                            new Pause(250), 
-                        ]
-                }, [] as Array<{ get(): string }>);
-                if(handler[location]) lastMessage!.addQuickReplyLocation();
-                Object.keys(handler).forEach(key => lastMessage!.addQuickReply(key, key));
-                messages[messages.length - 1] = new ChatAction('typing_off');
-                return messages.map(message => message.get());
+            onNext: async (output, handler) => {
+                //add quick replies if present
+                if(handler[location]) output[output.length-1].addQuickReplyLocation();
+                Object.keys(handler).forEach(key => output[output.length-1].addQuickReply(key, key));
+                //calculate pauses between messages
+                const remaining = Math.min(10 * 1000, apiRequest.lambdaContext.getRemainingTimeInMillis());
+                const factor = Math.min(1, remaining / output.reduce((total, o) => total + o.getReadingDuration(), 0));
+                //get output and insert pauses
+                const messages = [new ChatAction('typing_on').get()];
+                output.forEach(message => messages.push(
+                    message.setNotificationType('NO_PUSH').get(), 
+                    new Pause(message.getReadingDuration() * factor).get()
+                ));
+                messages[messages.length-1] = new ChatAction('typing_off').get();
+                return messages;
             },
-            onComplete: async (output) => {
-                //persist completion 
-                await this.state.complete();
-                onComplete && onComplete();
-                //send remaining messages
-                return output.reduce((r, e) => [...r, new Pause(), new Text(e.toString())], [] as Array<Pause|Text>).map(text => text.get());
-            }
         })
     }
 }
@@ -329,3 +329,18 @@ class State {
         this.stateChanged();
     }
 }
+
+declare module "claudia-bot-builder" {
+    namespace fbTemplate {
+        interface FacebookTemplate {
+            getReadingDuration: () => number;
+        }
+        interface Text {
+            template: { text: string };
+        }
+    }
+}
+
+FacebookTemplate.prototype.getReadingDuration = () => 1000;
+Text.prototype.getReadingDuration = function(this: Text) { return this.template.text.match(/\w+/g)!.length * 250; }
+

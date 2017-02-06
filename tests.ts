@@ -165,7 +165,7 @@ describe("Dialogue", () => {
         }
     });
         
-    it("sends muliple say or ask messages at once", async function(this: This) {
+    it("sends muliple messages at once", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
             say `Hi!`,
             ask `How are you?`,
