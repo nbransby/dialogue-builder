@@ -4,13 +4,24 @@
   "description": "Beautifuly readable static dialogue - great for simple bots or an onboarding flow",
   "main": "dialogue-builder.js",
   "types": "index.d.ts",
+  "engines": {
+    "node": ">=4.3"
+  },
   "dependencies": {
     "claudia-bot-builder": "../claudia-bot-builder"
   },
   "devDependencies": {
     "@types/jasmine": "^2.5.40",
     "@types/node": "^7.0.4",
+    "babel": "^6.5.2",
+    "babel-cli": "^6.22.2",
+    "babel-plugin-transform-es2015-destructuring": "^6.22.0",
+    "babel-plugin-transform-es2015-spread": "^6.22.0",
+    "babel-plugin-transform-object-rest-spread": "^6.22.0",
+    "babel-preset-env": "^1.1.8",
     "codecov": "^1.0.1",
+    "eslint": "^3.15.0",
+    "eslint-plugin-node": "^3.0.5",
     "gulp": "^3.9.1",
     "jasmine": "^2.5.2",
     "jasmine-promises": "^0.4.1",
@@ -19,7 +30,8 @@
     "typescript": "^2.1.4"
   },
   "scripts": {
-    "pretest": "tsc",
+    "prepublish": "tsc && babel dialogue-builder.js -o dialogue-builder.js && eslint dialogue-builder.js",
+    "pretest": "tsc && babel dialogue-builder.js -o dialogue-builder.js && eslint dialogue-builder.js ",
     "test": "nyc jasmine JASMINE_CONFIG_PATH=jasmine.json",
     "posttest": "nyc report --reporter=json && codecov -f coverage/*.json"
   },
