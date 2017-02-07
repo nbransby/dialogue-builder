@@ -152,19 +152,25 @@ export class Dialogue<T> {
         keys.forEach(k => this.keywords.set(k, h));
     }
     
-    private async process(dialogue: Script, onComplete: (() => void) | undefined, processor: Processor): Promise<string[]> {
+    private async process(dialogue: Script, processor: Processor): Promise<string[]> {
         const output: Array<FacebookTemplate> = []
         for(let i = this.state.startLine; i < dialogue.length; i++) {
             const element = dialogue[i];
+            //if element is output
+            if(element instanceof FacebookTemplate) {
+                if(this.outputSay || !(element instanceof Say)) output.push(element);
+                continue;
+            }
             //if element is an inline goto
             if(element instanceof Goto) {
                 i = this.state.jump(element, i);
                 continue;
             }
-            //skip messages
-            if(element instanceof FacebookTemplate && (this.outputSay || !(element instanceof Say))) {
-                output.push(element)
-            } else if(element instanceof Expect) {
+            //if element is a label
+            if(typeof element === 'string') {
+                break;
+            }
+            if(element instanceof Expect) {
                 const handler = dialogue[++i];
                 //if has already been asked
                 if(this.state.isAsked(element)) {
@@ -188,7 +194,6 @@ export class Dialogue<T> {
         }
         //persist completion 
         await this.state.complete();
-        onComplete && onComplete();
         return output.length == 0 ? [] : processor.onNext(output, {});
     }     
 
@@ -198,7 +203,7 @@ export class Dialogue<T> {
         return handler[keys[0]] ? invoke(handler[keys[0]]) : undefined;
     }
 
-    async consume(message: Message, apiRequest: Request, onComplete?: () => void): Promise<string[]> {
+    async consume(message: Message, apiRequest: Request): Promise<string[]> {
         await this.state.retrieveState()
         const keyword = this.keywords.get(message.text.toLowerCase())
         if(keyword) {
@@ -208,7 +213,7 @@ export class Dialogue<T> {
         if(this.state.isComplete) {
             throw [];
         }
-        return this.process(this.script, onComplete, {
+        return this.process(this.script, {
             onLast: (handler: ResponseHandler) => {
                 //if empty handler do nothing
                 if(Object.getOwnPropertyNames(handler).length == 0 && Object.getOwnPropertySymbols(handler).length == 0) return;
@@ -255,7 +260,6 @@ export class Dialogue<T> {
 class State {
     private state: Array<{ type: 'label'|'expect'|'complete', name?: string }>
     private asked: Set<string>
-    private completed: boolean
     private lastAsked: string | undefined
     private startLabel: string | undefined
     private jumpCount = 0;
@@ -275,7 +279,6 @@ class State {
         this.asked = new Set(asked);
         const label = this.state.find(s => s.type == 'label');
         this.startLabel = label && label.name;
-        this.completed = this.state.some(s => s.type == 'complete');
         return asked[0];
     }
 
@@ -291,7 +294,7 @@ class State {
 
     get isComplete(): boolean {
         assert(this.state);
-        return this.completed;
+        return this.state.length > 0 && this.state[0].type === 'complete';
     }
 
     get startLine(): number {
@@ -305,6 +308,7 @@ class State {
         if(!index) throw new Error(`Could not find label referenced ${typeof lineOrKeyword == 'number' ? 'on line' : 'by keyword'} '${lineOrKeyword}': goto \`${goto.toString()}\``);
         if(++this.jumpCount > 10) throw new Error(`Endless loop detected ${typeof lineOrKeyword == 'number' ? 'on line' : 'by keyword'} '${lineOrKeyword}': goto \`${goto.toString()}\``);
         // console.log(`Jumping to label '${goto.toString()}' on line ${index}`);
+        if(this.isComplete) this.state.shift(); 
         this.state.unshift({ type: 'label', name: goto.toString()})
         this.startLabel = goto.toString();
         return index;
@@ -312,6 +316,7 @@ class State {
 
     async complete(expect?: Expect) {
         assert(this.state);
+        if(expect && this.isAsked(expect)) return;
         this.state.unshift(expect ? { type: 'expect', name: expect.toString()} : { type: 'complete'});
         this.lastAsked = this.stateChanged();
         await this.storage.store(this.state);

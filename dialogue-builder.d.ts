@@ -56,9 +56,9 @@ export declare class Dialogue<T> {
     baseUrl: string;
     constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]);
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void;
-    private process(dialogue, onComplete, processor);
+    private process(dialogue, processor);
     private static handle<T>(handler, invoke, ...keys);
-    consume(message: Message, apiRequest: Request, onComplete?: () => void): Promise<string[]>;
+    consume(message: Message, apiRequest: Request): Promise<string[]>;
 }
 declare module "claudia-bot-builder" {
     namespace fbTemplate {
