@@ -4,7 +4,8 @@ import { Request } from 'claudia-api-builder'
 import { Message } from 'claudia-bot-builder'
 
 Object.defineProperty(global, 'jasmineRequire', {
-    value: { interface: () => {} }
+    value: { interface: () => {} },
+    configurable: true
 });
 import 'jasmine-promises'
 
@@ -434,7 +435,7 @@ describe("Dialogue", () => {
             },
         ], [{ type: 'expect', name: `I write like` }]);
         const result = await dialogue.consume(this.multimedia("audio", "recording.wav"), this.apiRequest);
-        jasmine.expect(storage.store).not.toHaveBeenCalled()
+        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: `I write like` }]);
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Sorry, I didn't quite catch that, I was expecting a file` }),
             jasmine.objectContaining({ text: `What do you write like?` }),
@@ -442,7 +443,7 @@ describe("Dialogue", () => {
         ]));
     });
 
-    it("breaks on hitting a label", async function(this: This) {
+    it("falls through a label not prefixed with an explanation mark", async function(this: This) {
         const [dialogue] = this.build(() => [
             say `Hi!`,
             'label',
@@ -451,6 +452,25 @@ describe("Dialogue", () => {
         const result = await dialogue.consume(this.postback, this.apiRequest);
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: 'Hi!' }), 
+            jasmine.objectContaining({ text: `How are you?` })
+        ]));
+        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: `label` })
+        ]));
+    });
+
+    it("breaks on hitting a label prefixed with an explanation mark", async function(this: This) {
+        const [dialogue] = this.build(() => [
+            say `Hi!`,
+            '!label',
+            ask `How are you?`,
+        ], []);
+        const result = await dialogue.consume(this.postback, this.apiRequest);
+        jasmine.expect(result).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: 'Hi!' }), 
+        ]));
+        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: `!label` })
         ]));
         jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `label` })
@@ -526,7 +546,6 @@ describe("Dialogue", () => {
 
     it("aborts a goto that causes an endless loop", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
-            goto `label`,
             'label',
             ask `How are you?`,
             goto `label`,

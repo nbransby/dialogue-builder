@@ -1,0 +1,31 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+        {
+            "name": "Debug tests",
+            "type": "node2",
+            "request": "launch",
+            "cwd": "${workspaceRoot}",
+            "program": "${workspaceRoot}/node_modules/jasmine/bin/jasmine.js",
+            "internalConsoleOptions": "openOnSessionStart",
+			"verboseDiagnosticLogging": true,
+			"sourceMaps": true,
+            "args": [
+				"--filter=cunt"
+            ]
+        },
+		{
+			"name": "Attach",
+			"type": "node",
+			"request": "attach",
+			"port": 32790,
+			"address": "localhost",
+			"restart": false,
+			"sourceMaps": true,
+			"outDir": null,
+			"localRoot": "${workspaceRoot}",
+			"remoteRoot": null,
+			"stopOnEntry": false
+		}
+	]
+}

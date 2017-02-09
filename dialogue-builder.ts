@@ -117,19 +117,20 @@ export class Dialogue<T> {
         this.keywords = new Map();
         this.outputSay = true;
         const labels = new Map();
-        const expects = new Set();
+        const expects = new Map();
         const gotos: {line: number, label: string}[] = [];
         for(let line = 0; line < this.script.length; line++) {
             const value = this.script[line];
             if(value instanceof Expect) {
                 if(expects.has(value.toString())) throw new Error(`Duplicate expect statement found on line ${line}: expect \`${value}\``);
-                expects.add(value.toString());   
+                expects.set(value.toString(), line);   
                 const handler = this.script[++line];
                 if(!handler || handler instanceof Directive|| handler instanceof FacebookTemplate) throw new Error(`Expect statement must be followed by a response handler on line ${line}: expect \`${value}\``);
                 if(handler.hasOwnProperty(location) && handler.hasOwnProperty(onLocation)) throw new Error(`Both location and onLocation implemented in the same response handler on line ${line}: expect \`${value}\``);
             } else if(typeof value === 'string') {
-                if(labels.has(value)) throw new Error(`Duplicate label found on line ${line}: '${value}'`);
-                labels.set(value, line);
+                const label = value.startsWith('!') ? value.substring(1) : value;
+                if(labels.has(label)) throw new Error(`Duplicate label found on line ${line}: '${value}'`);
+                labels.set(label, line);   
             } else if(value instanceof Goto) {
                 gotos.push({line: line, label: value.toString()});
             } else if(!(value instanceof FacebookTemplate)) {
@@ -139,7 +140,7 @@ export class Dialogue<T> {
         if(labels.size == this.script.length) throw new Error('Dialogue cannot be empty');
         const goto = gotos.find(g => !labels.has(g.label));
         if(goto) new Error(`Could not find label referenced on line ${goto.line}: goto \`${goto.label}\``);
-        this.state = new State(storage, labels);
+        this.state = new State(storage, expects, labels);
     }
 
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)) {
@@ -152,44 +153,32 @@ export class Dialogue<T> {
         keys.forEach(k => this.keywords.set(k, h));
     }
     
-    private async process(dialogue: Script, processor: Processor): Promise<string[]> {
+    private async process(handler: ResponseHandler, processor: Processor): Promise<string[]> {
         const output: Array<FacebookTemplate> = []
-        for(let i = this.state.startLine; i < dialogue.length; i++) {
-            const element = dialogue[i];
+        if(handler) try {
+            const goto = processor.onLast(handler);
+            goto && this.state.jump(goto, this.state.startLine);
+        } catch(e) {
+            if(!(e instanceof UnexpectedInputError)) throw e;
+            this.state.undo();
+            output.push(new Text(e.message));
+            this.outputSay = false;
+        }
+        //gather output
+        for(let i = this.state.startLine; i < this.script.length; i++) {
+            const element = this.script[i];
             //if element is output
             if(element instanceof FacebookTemplate) {
                 if(this.outputSay || !(element instanceof Say)) output.push(element);
-                continue;
-            }
-            //if element is an inline goto
-            if(element instanceof Goto) {
-                i = this.state.jump(element, i);
-                continue;
-            }
-            //if element is a label
-            if(typeof element === 'string') {
-                break;
-            }
-            if(element instanceof Expect) {
-                const handler = dialogue[++i];
-                //if has already been asked
-                if(this.state.isAsked(element)) {
-                    try {
-                        if(this.state.isLastAsked(element)) {
-                            const goto = processor.onLast(handler);
-                            i = goto ? this.state.jump(goto, i) : i;
-                        }
-                        output.length = 0;
-                        continue;
-                    } catch(e) {
-                        if(!(e instanceof UnexpectedInputError)) throw e;
-                        output.unshift(new Text(e.message));
-                        this.outputSay = false;
-                    }
-                }
+            } else if(element instanceof Goto) {
+                i = this.state.jump(element, i)
+            } else if(typeof element === 'string') {
+                //if element is a breaking label
+                if(element.startsWith('!')) break;
+            } else if(element instanceof Expect) {
                 //persist asking of this question
                 await this.state.complete(element);
-                return output.length == 0 ? [] : processor.onNext(output, handler);                             
+                return output.length == 0 ? [] : processor.onNext(output, this.script[i+1]);                             
             }
         }
         //persist completion 
@@ -205,15 +194,18 @@ export class Dialogue<T> {
 
     async consume(message: Message, apiRequest: Request): Promise<string[]> {
         await this.state.retrieveState()
+        let handler = undefined;
         const keyword = this.keywords.get(message.text.toLowerCase())
-        if(keyword) {
+        if(!keyword) {
+            handler = this.state.getResponseHandler(this.script);
+        } else {
             const goto = keyword();
             if(goto) this.state.jump(goto, message.text.toLowerCase());
         }
         if(this.state.isComplete) {
             throw [];
         }
-        return this.process(this.script, {
+        return this.process(handler, {
             onLast: (handler: ResponseHandler) => {
                 //if empty handler do nothing
                 if(Object.getOwnPropertyNames(handler).length == 0 && Object.getOwnPropertySymbols(handler).length == 0) return;
@@ -259,81 +251,63 @@ export class Dialogue<T> {
 
 class State {
     private state: Array<{ type: 'label'|'expect'|'complete', name?: string }>
-    private asked: Set<string>
-    private lastAsked: string | undefined
-    private startLabel: string | undefined
     private jumpCount = 0;
 
-    constructor(private storage: Storage, private labels: Map<string, number>) {
+    constructor(private storage: Storage, private expects: Map<string, number>, private labels: Map<string, number>) {
     }
 
     async retrieveState() {
-        if(!this.state) {
-            this.state = await this.storage.retrieve() as any || [];
-            this.lastAsked = this.stateChanged();
-        }
-    }
-
-    private stateChanged(): string | undefined {
-        const asked = this.state.filter(s => s.type !== 'label').map(s => s.name!)
-        this.asked = new Set(asked);
-        const label = this.state.find(s => s.type == 'label');
-        this.startLabel = label && label.name;
-        return asked[0];
-    }
-
-    isAsked(expect: Expect): boolean {
-        assert(this.state);
-        return this.asked.has(expect.toString());
-    }
-
-    isLastAsked(expect: Expect): boolean {
-        assert(this.state);
-        return expect.toString() === this.lastAsked;
+        this.state = this.state || await this.storage.retrieve() as any || [];
     }
 
     get isComplete(): boolean {
         assert(this.state);
-        return this.state.length > 0 && this.state[0].type === 'complete';
+        return this.state[0] && this.state[0].type === 'complete';
+    }
+
+    getResponseHandler(script: Script): ResponseHandler | undefined {
+        return script[this.startLine - 1];
     }
 
     get startLine(): number {
         assert(this.state);
-        return this.labels.get(this.startLabel!) || 0;
+        switch(this.state[0] && this.state[0].type) {
+            case 'expect': 
+                return this.expects.get(this.state[0].name!) + 2 || 0;
+            case 'label': 
+                return this.labels.get(this.state[0].name!) + 1 || 0;
+            case undefined:
+                return 0;
+            default: 
+                throw new Error(`Unexpected type ${this.state[0].type}`);
+        }
     }
 
     jump(goto: Goto, lineOrKeyword: number|string): number {
         assert(this.state);
-        const index = this.labels.get(goto.toString());
-        if(!index) throw new Error(`Could not find label referenced ${typeof lineOrKeyword == 'number' ? 'on line' : 'by keyword'} '${lineOrKeyword}': goto \`${goto.toString()}\``);
+        const label = goto.toString().startsWith('!') ? goto.toString().substring(1) : goto.toString();
+        if(!this.labels.has(label)) throw new Error(`Could not find label referenced ${typeof lineOrKeyword == 'number' ? 'on line' : 'by keyword'} '${lineOrKeyword}': goto \`${goto.toString()}\``);
         if(++this.jumpCount > 10) throw new Error(`Endless loop detected ${typeof lineOrKeyword == 'number' ? 'on line' : 'by keyword'} '${lineOrKeyword}': goto \`${goto.toString()}\``);
-        // console.log(`Jumping to label '${goto.toString()}' on line ${index}`);
+        // console.log(`Jumping to label '${goto.toString()}' on line ${line}`);
         if(this.isComplete) this.state.shift(); 
-        this.state.unshift({ type: 'label', name: goto.toString()})
-        this.startLabel = goto.toString();
-        return index;
+        this.state.unshift({ type: 'label', name: label});
+        return this.startLine - 1;
     }
 
     async complete(expect?: Expect) {
         assert(this.state);
-        if(expect && this.isAsked(expect)) return;
         this.state.unshift(expect ? { type: 'expect', name: expect.toString()} : { type: 'complete'});
-        this.lastAsked = this.stateChanged();
         await this.storage.store(this.state);
     }
     
     restart() {
         assert(this.state);
-        this.lastAsked = undefined;
         this.state.length = 0;
-        this.stateChanged();
     }
 
     undo() {
         assert(this.state);
-        this.state.splice(0, this.state.findIndex((s, i) => s.type === 'expect' && s.name !== this.lastAsked || i + 1 === this.state.length) + 1);
-        this.lastAsked = undefined;
-        this.stateChanged();
+        this.state.splice(0, this.state.findIndex((s, i) => (i > 0 && s.type === 'expect') || i + 1 === this.state.length) + 1);
     }
 }
 
