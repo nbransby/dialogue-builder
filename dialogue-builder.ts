@@ -6,6 +6,8 @@ import FacebookTemplate = builder.fbTemplate.FacebookTemplate
 import Text = builder.fbTemplate.Text;
 import Pause = builder.fbTemplate.Pause;
 import List = builder.fbTemplate.List;
+import Button = builder.fbTemplate.Button;
+import Attachment = builder.fbTemplate.Attachment;
 import ChatAction = builder.fbTemplate.ChatAction;
 
 export const defaultAction = Symbol("a default action")
@@ -25,6 +27,8 @@ export type ResponseHandler = any
 //     readonly [onLocation]?(lat: number, long: number, title?: string, url?: string): Goto | void;
 //     readonly [onImage]?(url: string): Goto | void;
 // }
+
+const ordinals = ['first', 'second', 'third', 'forth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth']
 
 export class UnexpectedInputError {
     constructor(public message: string) {}
@@ -68,19 +72,57 @@ export function goto(template: TemplateStringsArray, ...substitutions: string[])
     return new Goto(String.raw(template, ...substitutions));
 }
 
+export function audio(template: TemplateStringsArray, ...substitutions: string[]): Attachment {
+    return new Attachment(String.raw(template, ...substitutions), 'audio');
+}
+
+export function video(template: TemplateStringsArray, ...substitutions: string[]): Attachment {
+    return new Attachment(String.raw(template, ...substitutions), 'video');
+}
+
+export function image(template: TemplateStringsArray, ...substitutions: string[]): Attachment {
+    return new Attachment(String.raw(template, ...substitutions), 'image');
+}
+
+export function file(template: TemplateStringsArray, ...substitutions: string[]): Attachment {
+    return new Attachment(String.raw(template, ...substitutions), 'file');
+}
+
 export type ButtonHandler = { [title: string]: () =>  Goto | void}
 export type Bubble = [string, string, string, ButtonHandler]
 
+export function buttons(id: string, text: string, handler: ButtonHandler): Button {
+    const buttons = new Button(text);
+    buttons.identifier = `buttons '${id}'`;
+    buttons.postbacks = [];
+    Object.keys(handler).forEach((key, i) => {
+        const payload = `'${key}' button in buttons '${id}'`;
+        buttons.addButton(key, payload).postbacks!.push([payload, handler[key]]);
+    });
+    return buttons;
+}
+
 export function list(id: string, type: 'compact'|'large', bubbles: Bubble[], handler: ButtonHandler): List {
     const list = new List(type);
+    list.identifier = `list '${id}'`;
+    list.postbacks = [];
     bubbles.forEach((bubble, index) => {
         const [title, subtitle, image, handler] = bubble;
         list.addBubble(title, subtitle);
         if(image) list.addImage(image);
-        if(handler[defaultAction]) list.addDefaultAction(`/list/${id}/bubble/${index}`)
-        Object.keys(handler).forEach((key, i) => list.addButton(key, `/list/${id}/bubble/${index}/button/${i}`));
+        if(handler[defaultAction]) {
+            const payload = `default action of ${ordinals[index]} bubble of list '${id}'`;
+            list.addDefaultAction(payload).postbacks!.push([payload, handler[defaultAction]]);
+        }
+        Object.keys(handler).forEach((key, i) => {
+            const payload = `'${key}' button in ${ordinals[index]} bubble of list '${id}'`;
+            list.addButton(key, payload).postbacks!.push([payload, handler[key]])
+        });
     });
-    Object.keys(handler).forEach((key, i) => list.addListButton(key, `/list/${id}/button/${i}`));
+    Object.keys(handler).forEach((key, i) => {
+        const payload = `'${key}' button in list '${id}'`;
+        list.addListButton(key, payload).postbacks!.push([payload, handler[key]]);
+    });
     return list;
 }
 
@@ -100,22 +142,27 @@ export interface Storage {
     retrieve(): Promise<Object>
 }
 
-
-type Processor = { onLast: (handler: ResponseHandler) => void | Goto, onNext: (output: FacebookTemplate[], handler: ResponseHandler) => Promise<string[]> }
-
+interface Processor { 
+    consumePostback(identifier: string): boolean
+    consumeKeyword(keyword: string): boolean 
+    consumeResponse(handler: ResponseHandler): void | Goto, 
+    addQuickReplies(message: FacebookTemplate, handler: ResponseHandler): this
+    insertPauses(output: FacebookTemplate[]): Array<{ get(): string}>
+}
 
 export class Dialogue<T> {
     private readonly script: Script
     private readonly state: State
-    private readonly keywords: Map<string, () =>  void | Goto>
+    private readonly handlers: Map<string, () =>  void | Goto>
     private outputSay: boolean
 
     public baseUrl: string
 
     constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]) {
         this.script = builder(...context);
-        this.keywords = new Map();
+        this.handlers = new Map();
         this.outputSay = true;
+        const templates = new Set();
         const labels = new Map();
         const expects = new Map();
         const gotos: {line: number, label: string}[] = [];
@@ -133,7 +180,11 @@ export class Dialogue<T> {
                 labels.set(label, line);   
             } else if(value instanceof Goto) {
                 gotos.push({line: line, label: value.toString()});
-            } else if(!(value instanceof FacebookTemplate)) {
+            } else if(value instanceof FacebookTemplate) {
+                if(templates.has(value.identifier)) throw new Error(`Duplicate identifier found on line ${line} for ${value.identifier}`);
+                if(value.identifier) templates.add(value.identifier);
+                (value.postbacks || []).forEach(p => this.handlers.set(p[0], p[1]));
+            } else {
                 throw new Error(`Response handler must be preceeded by an expect statement on line ${line}: expect \`${value}\``)
             }
         }
@@ -150,19 +201,30 @@ export class Dialogue<T> {
             this.state.undo();  
         }
         const h = handler === 'restart' ? () => this.state.restart() : handler === 'undo' ? undo : handler;
-        keys.forEach(k => this.keywords.set(k, h));
+        keys.forEach(k => this.handlers.set(`keyword '${k}'`, h));
     }
     
-    private async process(handler: ResponseHandler, processor: Processor): Promise<string[]> {
+    private async process(message: Message, processor: Processor): Promise<string[]> {
+        await this.state.retrieveState();
+        //process input
         const output: Array<FacebookTemplate> = []
-        if(handler) try {
-            const goto = processor.onLast(handler);
-            goto && this.state.jump(goto, this.state.startLine);
-        } catch(e) {
-            if(!(e instanceof UnexpectedInputError)) throw e;
-            this.state.undo();
-            output.push(new Text(e.message));
-            this.outputSay = false;
+        if(message.originalRequest.postback) {
+            const payload = message.originalRequest.postback.payload;
+            if(!processor.consumePostback(payload)) console.log(`Postback recieved with unknown payload '${payload}'`);
+        } else if(!processor.consumeKeyword(message.text)) {
+            const line = this.state.startLine;
+            if(line > 0) try {
+                const goto = processor.consumeResponse(this.script[line - 1]);
+                goto && this.state.jump(goto, `expect \`${this.script[line - 2].toString()}\``);
+            } catch(e) {
+                if(!(e instanceof UnexpectedInputError)) throw e;
+                this.state.undo();
+                output.push(new Text(e.message));
+                this.outputSay = false;
+            }
+        }
+        if(this.state.isComplete) {
+            throw [];
         }
         //gather output
         for(let i = this.state.startLine; i < this.script.length; i++) {
@@ -178,73 +240,75 @@ export class Dialogue<T> {
             } else if(element instanceof Expect) {
                 //persist asking of this question
                 await this.state.complete(element);
-                return output.length == 0 ? [] : processor.onNext(output, this.script[i+1]);                             
+                return output.length == 0 ? [] : 
+                    processor.addQuickReplies(output[output.length-1], this.script[i+1])
+                        .insertPauses(output).map(e => e.get());                             
             }
         }
         //persist completion 
         await this.state.complete();
-        return output.length == 0 ? [] : processor.onNext(output, {});
+        return output.length == 0 ? [] : processor.insertPauses(output).map(e => e.get());
     }     
 
-    private static handle<T>(handler: ResponseHandler, invoke: (method: Function) => T, ...keys: Array<string | symbol>): T | undefined {
-        keys = keys.filter(key => handler.hasOwnProperty(key));
-        if(keys.length == 0) throw new UndefinedHandlerError(handler);
-        return handler[keys[0]] ? invoke(handler[keys[0]]) : undefined;
-    }
-
     async consume(message: Message, apiRequest: Request): Promise<string[]> {
-        await this.state.retrieveState()
-        let handler = undefined;
-        const keyword = this.keywords.get(message.text.toLowerCase())
-        if(!keyword) {
-            handler = this.state.getResponseHandler(this.script);
-        } else {
-            const goto = keyword();
-            if(goto) this.state.jump(goto, message.text.toLowerCase());
-        }
-        if(this.state.isComplete) {
-            throw [];
-        }
-        return this.process(handler, {
-            onLast: (handler: ResponseHandler) => {
+        return this.process(message, {
+            consumeKeyword(this: Processor, keyword) {
+                return this.consumePostback(`keyword '${keyword.toLowerCase()}'`);
+            }, 
+            consumePostback: identifier => {
+                const handler = this.handlers.get(identifier);
+                if(!handler) return false;
+                const goto = handler();
+                goto && this.state.jump(goto, identifier);
+                return true;                            
+            },
+            consumeResponse: handler => {
                 //if empty handler do nothing
                 if(Object.getOwnPropertyNames(handler).length == 0 && Object.getOwnPropertySymbols(handler).length == 0) return;
                 //handle any attachments
+                const handle = <T>(handler: ResponseHandler, invoke: (method: Function) => T, ...keys: Array<string | symbol>): T | undefined => {
+                    keys = keys.filter(key => handler.hasOwnProperty(key));
+                    if(keys.length == 0) throw new UndefinedHandlerError(handler);
+                    return handler[keys[0]] ? invoke(handler[keys[0]]) : undefined;
+                }
                 for(let attachment of message.originalRequest.message.attachments || []) {
                     switch(attachment.type) {
                         case 'location':
                             const invoke = (m: Function) => m(attachment.payload.coordinates!.lat, attachment.payload.coordinates!.long, attachment.payload.title, attachment.payload.url);
-                            return Dialogue.handle(handler, invoke, location, onLocation, defaultAction);
+                            return handle(handler, invoke, location, onLocation, defaultAction);
                         case 'image':
-                            return Dialogue.handle(handler, m => m(attachment.payload.url), onImage, defaultAction);
+                            return handle(handler, m => m(attachment.payload.url), onImage, defaultAction);
                         case 'audio':
-                            return Dialogue.handle(handler, m => m(attachment.payload.url), onAudio, defaultAction);
+                            return handle(handler, m => m(attachment.payload.url), onAudio, defaultAction);
                         case 'video':
-                            return Dialogue.handle(handler, m => m(attachment.payload.url), onVideo, defaultAction);
+                            return handle(handler, m => m(attachment.payload.url), onVideo, defaultAction);
                         case 'file':
-                            return Dialogue.handle(handler, m => m(attachment.payload.url), onFile, defaultAction);
+                            return handle(handler, m => m(attachment.payload.url), onFile, defaultAction);
                         default:
                             throw new Error(`Unsupported attachment type '${attachment.type}'`)
                     }
                 }
-                return Dialogue.handle(handler, m => m(message.text), message.text, onText);
+                return handle(handler, m => m(message.text), message.text, onText);
             },
-            onNext: async (output, handler) => {
+            addQuickReplies(this: Processor, message, handler) {
                 //add quick replies if present
-                if(handler[location]) output[output.length-1].addQuickReplyLocation();
-                Object.keys(handler).forEach(key => output[output.length-1].addQuickReply(key, key));
+                if(handler[location]) message.addQuickReplyLocation();
+                Object.keys(handler).forEach(key => message.addQuickReply(key, key));
+                return this;
+            },
+            insertPauses: output => {
                 //calculate pauses between messages
                 const remaining = Math.min(10 * 1000, apiRequest.lambdaContext.getRemainingTimeInMillis());
                 const factor = Math.min(1, remaining / output.reduce((total, o) => total + o.getReadingDuration(), 0));
                 //get output and insert pauses
-                const messages = [new ChatAction('typing_on').get()];
+                const messages: Array<{ get(): string}> = [new ChatAction('typing_on')];
                 output.forEach(message => messages.push(
-                    message.setBaseUrl(this.baseUrl).setNotificationType('NO_PUSH').get(), 
-                    new Pause(message.getReadingDuration() * factor).get()
+                    message.setBaseUrl(this.baseUrl).setNotificationType('NO_PUSH'), 
+                    new Pause(message.getReadingDuration() * factor)
                 ));
-                messages[messages.length-1] = new ChatAction('typing_off').get();
+                messages[messages.length-1] = new ChatAction('typing_off');
                 return messages;
-            },
+            }
         })
     }
 }
@@ -265,10 +329,6 @@ class State {
         return this.state[0] && this.state[0].type === 'complete';
     }
 
-    getResponseHandler(script: Script): ResponseHandler | undefined {
-        return script[this.startLine - 1];
-    }
-
     get startLine(): number {
         assert(this.state);
         switch(this.state[0] && this.state[0].type) {
@@ -283,12 +343,12 @@ class State {
         }
     }
 
-    jump(goto: Goto, lineOrKeyword: number|string): number {
+    jump(goto: Goto, lineOrIdentifier: number|string): number {
         assert(this.state);
         const label = goto.toString().startsWith('!') ? goto.toString().substring(1) : goto.toString();
-        if(!this.labels.has(label)) throw new Error(`Could not find label referenced ${typeof lineOrKeyword == 'number' ? 'on line' : 'by keyword'} '${lineOrKeyword}': goto \`${goto.toString()}\``);
-        if(++this.jumpCount > 10) throw new Error(`Endless loop detected ${typeof lineOrKeyword == 'number' ? 'on line' : 'by keyword'} '${lineOrKeyword}': goto \`${goto.toString()}\``);
-        // console.log(`Jumping to label '${goto.toString()}' on line ${line}`);
+        if(!this.labels.has(label)) throw new Error(`Could not find label referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: goto \`${goto.toString()}\``);
+        if(++this.jumpCount > 10) throw new Error(`Endless loop detected ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: goto \`${goto.toString()}\``);
+        console.log(`Jumping to label '${goto.toString()}' from ${typeof lineOrIdentifier == 'number' ? 'line' : ''} ${lineOrIdentifier}: goto \`${goto.toString()}\``);
         if(this.isComplete) this.state.shift(); 
         this.state.unshift({ type: 'label', name: label});
         return this.startLine - 1;
@@ -316,9 +376,14 @@ declare module "claudia-bot-builder" {
         interface FacebookTemplate {
             getReadingDuration: () => number
             setBaseUrl: (url: string) => this
+            postbacks?: [string, () => Goto | void][]
+            identifier?: string
         }
         interface Text {
             template: { text: string };
+        }
+        interface Attachment {
+            template: { attachment: { payload: { url: string }}};
         }
     }
 }
@@ -328,6 +393,12 @@ Text.prototype.getReadingDuration = function(this: Text) { return this.template.
 
 FacebookTemplate.prototype.setBaseUrl = function(this: List, url: string) { return this }
 List.prototype.setBaseUrl = function(this: List, url: string) { 
-    this.bubbles.filter(b => b.image_url).forEach(b => b.image_url = url + b.image_url);
-    return this
+    this.bubbles.filter(b => b.image_url).forEach(b => b.image_url = !b.image_url || b.image_url.indexOf('://') < 0 ? b.image_url : url + b.image_url);
+    return this;
+}
+
+Attachment.prototype.setBaseUrl = function(this: Attachment, baseUrl: string) { 
+    const url = this.template.attachment.payload.url;
+    if(url.indexOf('://') < 0) this.template.attachment.payload.url = baseUrl + url;
+    return this;
 }

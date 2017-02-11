@@ -4,6 +4,8 @@ import Message = builder.Message;
 import FacebookTemplate = builder.fbTemplate.FacebookTemplate;
 import Text = builder.fbTemplate.Text;
 import List = builder.fbTemplate.List;
+import Button = builder.fbTemplate.Button;
+import Attachment = builder.fbTemplate.Attachment;
 export declare const defaultAction: symbol;
 export declare const location: symbol;
 export declare const onText: symbol;
@@ -34,10 +36,15 @@ export declare function say(template: TemplateStringsArray, ...substitutions: an
 export declare function ask(template: TemplateStringsArray, ...substitutions: string[]): Text;
 export declare function expect(template: TemplateStringsArray, ...substitutions: string[]): Expect;
 export declare function goto(template: TemplateStringsArray, ...substitutions: string[]): Goto;
+export declare function audio(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
+export declare function video(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
+export declare function image(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
+export declare function file(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
 export declare type ButtonHandler = {
     [title: string]: () => Goto | void;
 };
 export declare type Bubble = [string, string, string, ButtonHandler];
+export declare function buttons(id: string, text: string, handler: ButtonHandler): Button;
 export declare function list(id: string, type: 'compact' | 'large', bubbles: Bubble[], handler: ButtonHandler): List;
 export declare function dialogue<T>(name: string, script: (...context: T[]) => Script): DialogueBuilder<T>;
 export interface DialogueBuilder<T> {
@@ -51,13 +58,12 @@ export interface Storage {
 export declare class Dialogue<T> {
     private readonly script;
     private readonly state;
-    private readonly keywords;
+    private readonly handlers;
     private outputSay;
     baseUrl: string;
     constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]);
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void;
-    private process(handler, processor);
-    private static handle<T>(handler, invoke, ...keys);
+    private process(message, processor);
     consume(message: Message, apiRequest: Request): Promise<string[]>;
 }
 declare module "claudia-bot-builder" {
@@ -65,10 +71,21 @@ declare module "claudia-bot-builder" {
         interface FacebookTemplate {
             getReadingDuration: () => number;
             setBaseUrl: (url: string) => this;
+            postbacks?: [string, () => Goto | void][];
+            identifier?: string;
         }
         interface Text {
             template: {
                 text: string;
+            };
+        }
+        interface Attachment {
+            template: {
+                attachment: {
+                    payload: {
+                        url: string;
+                    };
+                };
             };
         }
     }

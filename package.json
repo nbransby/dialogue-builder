@@ -25,15 +25,18 @@
     "gulp": "^3.9.1",
     "jasmine": "^2.5.2",
     "jasmine-promises": "^0.4.1",
+    "jasmine-ts": "0.0.3",
     "line-number": "^0.1.0",
     "nyc": "^10.0.0",
+    "ts-node": "^2.1.0",
     "typescript": "^2.1.4"
   },
   "scripts": {
     "prepublish": "tsc && babel dialogue-builder.js -o dialogue-builder.js && eslint dialogue-builder.js",
     "pretest": "tsc && babel dialogue-builder.js -o dialogue-builder.js && eslint dialogue-builder.js ",
     "test": "nyc jasmine JASMINE_CONFIG_PATH=jasmine.json",
-    "posttest": "nyc report --reporter=json && codecov -f coverage/*.json"
+    "posttest": "nyc report --reporter=json && codecov -f coverage/*.json",
+    "test-ts": "set JASMINE_CONFIG_PATH=jasmine.json&& jasmine-ts"
   },
   "repository": {
     "type": "git",

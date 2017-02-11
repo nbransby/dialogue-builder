@@ -51,6 +51,31 @@ declare module "claudia-bot-builder" {
                 constructor(text: string)
             }
 
+            class Attachment extends FacebookTemplate {
+                constructor(url: string, type?: 'file'|'image'|'audio'|'video')
+            }
+
+            class File extends FacebookTemplate {
+                constructor(url: string)
+            }
+
+            class Image extends FacebookTemplate {
+                constructor(url: string)
+            }
+
+            class Audio extends FacebookTemplate {
+                constructor(url: string)
+            }
+
+            class Video extends FacebookTemplate {
+                constructor(url: string)
+            }
+
+            class Button extends FacebookTemplate {
+                constructor(text: string)
+                addButton(title: string, value: string): this
+            }
+
             class List extends FacebookTemplate {
                 constructor(topElementStyle: 'large'|'compact')
                 bubbles: Array<{ image_url?: string }>
@@ -80,6 +105,7 @@ declare module "claudia-bot-builder" {
                 recipient: { id: string }
                 timestamp: number
                 message: Message
+                postback?: { payload: string }
                 read?: { watermark: number, seq: number }
             }
 
@@ -88,10 +114,10 @@ declare module "claudia-bot-builder" {
                 seq: number
                 text: string
                 quick_reply?: { payload: string }
-                attachments?: Attachment[]
+                attachments?: MessageAttachment[]
            }
 
-           interface Attachment {
+           interface MessageAttachment {
                 type: 'image'|'audio'|'video'|'file'|'location'
                 payload: { title?: string, url?: string, coordinates?: { lat: number, long: number} }
             }

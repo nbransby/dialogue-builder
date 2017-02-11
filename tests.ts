@@ -1,7 +1,7 @@
 
-import { Dialogue, dialogue, Storage, Script, goto, say, ask, expect, onText, location, onLocation, onFile, onAudio, onImage, onVideo } from './dialogue-builder'
+import { Dialogue, dialogue, Storage, Script, goto, say, ask, expect, onText, location, onLocation, onFile, onAudio, onImage, onVideo, image, audio, buttons, list } from './dialogue-builder'
 import { Request } from 'claudia-api-builder'
-import { Message } from 'claudia-bot-builder'
+import { Message, fbTemplate } from 'claudia-bot-builder'
 
 Object.defineProperty(global, 'jasmineRequire', {
     value: { interface: () => {} },
@@ -13,10 +13,10 @@ describe("Dialogue", () => {
     
     interface This {
         build<T>(script: (context: T) => Script, state: Array<{ type: 'label'|'expect'|'complete', name?: string }>, storage?: Storage, context?: T): [Dialogue<T>, Storage]
-        message(text: string, postback?: boolean): Message
+        message(text: string, payload?: string): Message
         multimedia(type: 'image'|'audio'|'video'|'file'|'location', url: string): Message
         location(lat: number, long: number, title?: string, url?: string): Message
-        postback: Message
+        postback(payload?: string): Message
         apiRequest: Request
     }
 
@@ -25,8 +25,8 @@ describe("Dialogue", () => {
             storage.retrieve.and.callFake(() => Promise.resolve(state));
             return [new Dialogue<T>(dialogue("Mock", script), storage, ...context), storage];            
         }        
-        this.message = (text, postback) => { return {
-            postback: Boolean(postback), 
+        this.message = (text, payload) => { return {
+            postback: payload !== undefined, 
             text: text, 
             sender: "user", 
             type: 'facebook', 
@@ -38,7 +38,10 @@ describe("Dialogue", () => {
                     mid: "1", 
                     seq: 1, 
                     text: "Get Started" 
-                } 
+                },
+                postback: (payload && {
+                    payload: payload!
+                }) as {payload: string}
             }
         }}
         this.multimedia = (type: 'image'|'audio'|'video'|'file'|'location', url: string) => { return {
@@ -92,7 +95,7 @@ describe("Dialogue", () => {
                 } 
             }
         }}
-        this.postback = this.message('Get Started', true)
+        this.postback = (payload?: string) => this.message('Get Started', payload || 'Get Started')
         this.apiRequest = {
             queryString: {},
             env: {},
@@ -110,7 +113,7 @@ describe("Dialogue", () => {
             jasmine.expect(context).toBe('mycontext');
             return [ say `Hi!`]
         }, [], undefined, 'mycontext');
-        await dialogue.consume(this.postback, this.apiRequest)
+        await dialogue.consume(this.postback(), this.apiRequest)
     });
 
     it("throws an exception on empty script given", async function(this: This) {
@@ -134,39 +137,67 @@ describe("Dialogue", () => {
         const [dialogue, storage] = this.build(() => [
             say `Hi!`
         ], []);
-        jasmine.expect(await dialogue.consume(this.postback, this.apiRequest)).toEqual(jasmine.arrayContaining([jasmine.objectContaining({ text: 'Hi!' })]));
+        jasmine.expect(await dialogue.consume(this.postback(), this.apiRequest)).toEqual(
+            jasmine.arrayContaining([jasmine.objectContaining({ text: 'Hi!' })])
+        );
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete' }]);
+    });
+        
+    it("sends all messages with NO_PUSH notification type", async function(this: This) {
+        const [dialogue] = this.build(() => [
+            say `Hi!`
+        ], []);
+        jasmine.expect(await dialogue.consume(this.postback(), this.apiRequest)).toEqual(
+            jasmine.arrayContaining([jasmine.objectContaining({ notification_type: 'NO_PUSH' })])
+        );
     });
         
     it("throws empty array on consume when complete", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
             say `Hi!`
         ], []);
-        await dialogue.consume(this.postback, this.apiRequest)
+        await dialogue.consume(this.postback(), this.apiRequest)
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete' }]);
         await dialogue.consume(this.message('Hi'), this.apiRequest)
             .then(() => fail('Did not throw'))
             .catch(() => jasmine.expect(storage.store).toHaveBeenCalledTimes(1))
     });
         
-    it("sends muliple messages at once", async function(this: This) {
+    it("sends muliple messages at once surrounded with typing indicators with pauses inbetween", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
             say `Hi!`,
             ask `How are you?`,
         ], []);
-        jasmine.expect(await dialogue.consume(this.postback, this.apiRequest)).toEqual(jasmine.arrayContaining([
+        jasmine.expect(await dialogue.consume(this.postback(), this.apiRequest)).toEqual([
+            { sender_action: 'typing_on' }, 
             jasmine.objectContaining({ text: 'Hi!' }), 
-            jasmine.objectContaining({ text: `How are you?` })
-        ]));
+            { claudiaPause: jasmine.anything() },
+            jasmine.objectContaining({ text: `How are you?` }),
+            { sender_action: 'typing_off' }
+        ]);
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete' }]);
     });
 
-    it("trims extranous whitespace", async function(this: This) {
+    it("trims extranous whitespace in messages", async function(this: This) {
         const [dialogue] = this.build(() => [
             say `Hi   
             there!`
         ], []);
-        jasmine.expect(await dialogue.consume(this.postback, this.apiRequest)).toEqual(jasmine.arrayContaining([jasmine.objectContaining({ text: 'Hi \nthere!' })]));
+        jasmine.expect(await dialogue.consume(this.postback(), this.apiRequest)).toEqual(
+            jasmine.arrayContaining([jasmine.objectContaining({ text: 'Hi \nthere!' })])
+        );
+    });
+
+    it("supports bot builder template class instances inline", async function(this: This) {
+        const [dialogue] = this.build(() => [
+            new fbTemplate.List("compact").addBubble('Bubble 1').addBubble('Bubble 2')
+        ], []);
+        jasmine.expect(await dialogue.consume(this.postback(), this.apiRequest)).toEqual(
+            jasmine.arrayContaining([
+                jasmine.objectContaining({ attachment: 
+                    jasmine.objectContaining({ payload: 
+                        jasmine.objectContaining({ template_type: 'list' })})})])
+        );
     });
 
     it("throws an exception on script with duplicate expect statements", async function(this: This) {
@@ -178,6 +209,16 @@ describe("Dialogue", () => {
                 expect `I feel`, {},
             ], [], storage)
         ).toThrow(jasmine.stringMatching('Duplicate expect statement found'));
+        jasmine.expect(storage.store).not.toHaveBeenCalled();
+    });
+
+    it("throws an exception on script with duplicate template ids", async function(this: This) {
+        const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
+        jasmine.expect(() => this.build(() => [
+                buttons('some buttons', 'Some buttons', {}),
+                buttons('some buttons', 'Some more buttons', {}),
+            ], [], storage)
+        ).toThrow(jasmine.stringMatching('Duplicate identifier found'));
         jasmine.expect(storage.store).not.toHaveBeenCalled();
     });
 
@@ -216,7 +257,7 @@ describe("Dialogue", () => {
             expect `I feel`, {},
             say `Don't say this`
         ], []);
-        const result = await dialogue.consume(this.postback, this.apiRequest);
+        const result = await dialogue.consume(this.postback(), this.apiRequest);
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: 'How are you?' })
         ]));
@@ -246,7 +287,7 @@ describe("Dialogue", () => {
                 'Crap': () => {}
             },
         ], []);
-        jasmine.expect(await dialogue.consume(this.postback, this.apiRequest)).toEqual(jasmine.arrayContaining([
+        jasmine.expect(await dialogue.consume(this.postback(), this.apiRequest)).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: 'Hi!' }), 
             jasmine.objectContaining({ text: `How are you?`, quick_replies:[
                 jasmine.objectContaining({ title: 'Great' }), 
@@ -262,7 +303,7 @@ describe("Dialogue", () => {
                 [location]: () => {}
             },
         ], []);
-        jasmine.expect(await dialogue.consume(this.postback, this.apiRequest)).toEqual(jasmine.arrayContaining([
+        jasmine.expect(await dialogue.consume(this.postback(), this.apiRequest)).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Where are you?`, quick_replies:[
                 jasmine.objectContaining({ content_type: 'location' }), 
             ]})
@@ -278,6 +319,29 @@ describe("Dialogue", () => {
         ], [{ type: 'expect', name: `I feel` }]);
         await dialogue.consume(this.message('Amazing'), this.apiRequest)
         jasmine.expect(handler.Amazing).toHaveBeenCalled();
+    });
+
+    it("invokes a button handler on recieving the postback", async function(this: This) {
+        const handler = jasmine.createSpyObj('response', ['Go']);
+        const button = buttons('some buttons', 'Some buttons', handler);
+        const [dialogue] = this.build(() => [
+            button
+        ], []);
+        await dialogue.consume(this.postback(button.postbacks![0][0]), this.apiRequest);
+        jasmine.expect(handler.Go).toHaveBeenCalled();
+    });
+
+    it("invokes a list bubble's button handler on recieving the postback", async function(this: This) {
+        const handler = jasmine.createSpyObj('response', ['Go']);
+        const mylist = list('my list', 'compact', [        
+            ['Title', 'Subtitle', 'image.jpeg', handler],
+            ['Title', 'Subtitle', 'image.jpeg', {}]
+        ], handler);
+        const [dialogue] = this.build(() => [
+            mylist
+        ], []);
+        await dialogue.consume(this.postback(mylist.postbacks![0][0]), this.apiRequest);
+        jasmine.expect(handler.Go).toHaveBeenCalled();
     });
 
     it("supports empty handlers", async function(this: This) {
@@ -441,6 +505,9 @@ describe("Dialogue", () => {
             jasmine.objectContaining({ text: `What do you write like?` }),
             jasmine.objectContaining({ text: `Send us a word document` })
         ]));
+        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: `This won't be repeated` }),
+        ]));
     });
 
     it("falls through a label not prefixed with an explanation mark", async function(this: This) {
@@ -449,7 +516,7 @@ describe("Dialogue", () => {
             'label',
             ask `How are you?`,
         ], []);
-        const result = await dialogue.consume(this.postback, this.apiRequest);
+        const result = await dialogue.consume(this.postback(), this.apiRequest);
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: 'Hi!' }), 
             jasmine.objectContaining({ text: `How are you?` })
@@ -465,7 +532,7 @@ describe("Dialogue", () => {
             '!label',
             ask `How are you?`,
         ], []);
-        const result = await dialogue.consume(this.postback, this.apiRequest);
+        const result = await dialogue.consume(this.postback(), this.apiRequest);
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: 'Hi!' }), 
         ]));
@@ -488,7 +555,7 @@ describe("Dialogue", () => {
             'label',
             ask `How are you?`,
         ], []);
-        const result = await dialogue.consume(this.postback, this.apiRequest);
+        const result = await dialogue.consume(this.postback(), this.apiRequest);
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: 'Hi!' }), 
             jasmine.objectContaining({ text: `How are you?` })
@@ -524,7 +591,7 @@ describe("Dialogue", () => {
             goto `label`,
             ask `How are you?`,
         ], [], storage);
-        await dialogue.consume(this.postback, this.apiRequest)
+        await dialogue.consume(this.postback(), this.apiRequest)
             .then(() => fail('Did not throw'))
             .catch((e) => {
                 jasmine.expect(e).toEqual(jasmine.stringMatching('Could not find label'));
@@ -550,7 +617,7 @@ describe("Dialogue", () => {
             ask `How are you?`,
             goto `label`,
         ], []);
-        await dialogue.consume(this.postback, this.apiRequest)
+        await dialogue.consume(this.postback(), this.apiRequest)
             .then(() => fail('Did not throw'))
             .catch(e => {
                 jasmine.expect(e).toEqual(jasmine.stringMatching('Endless loop detected'));
@@ -675,7 +742,7 @@ describe("Dialogue", () => {
                 'Amazing': null
             },
         ], []);
-        dialogue.setKeywordHandler('start over', 'restart')
+        dialogue.setKeywordHandler('starft over', 'restart')
         dialogue.setKeywordHandler('back', 'undo')
         jasmine.expect(await dialogue.consume(this.message('start over'), this.apiRequest)).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `How are you?` })
@@ -685,5 +752,17 @@ describe("Dialogue", () => {
             jasmine.objectContaining({ text: `How are you?` })
         ]));
         jasmine.expect(storage.store).not.toHaveBeenCalledWith(jasmine.arrayContaining([{ type: 'complete' }]));
+    });
+
+    it("prefixes uris with the baseUrl but leaves full urls as is", async function(this: This) {
+        const [dialogue] = this.build(() => [
+            image `/image.jpg`,
+            audio `http://google.com/audio.wav`
+        ], []);
+        dialogue.baseUrl = "http://localhost";
+        jasmine.expect(await dialogue.consume(this.postback(), this.apiRequest)).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ attachment: jasmine.objectContaining({ payload: { url: "http://localhost/image.jpg" }})}),
+            jasmine.objectContaining({ attachment: jasmine.objectContaining({ payload: { url: "http://google.com/audio.wav" }})})
+        ]));
     });
 });
