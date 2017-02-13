@@ -334,7 +334,9 @@ describe("Dialogue", () => {
     it("invokes a list bubble's button handler on recieving the postback", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['Go']);
         const mylist = list('my list', 'compact', [        
-            ['Title', 'Subtitle', 'image.jpeg', handler],
+            ['Title', 'Subtitle', 'image.jpeg', {
+                ['Go']: () => handler.Go()
+            }],
             ['Title', 'Subtitle', 'image.jpeg', {}]
         ], handler);
         const [dialogue] = this.build(() => [

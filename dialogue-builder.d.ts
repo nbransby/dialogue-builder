@@ -56,9 +56,10 @@ export interface Storage {
     retrieve(): Promise<Object>;
 }
 export declare class Dialogue<T> {
-    private readonly script;
+    private readonly build;
     private readonly state;
     private readonly handlers;
+    private script;
     private outputSay;
     baseUrl: string;
     constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]);

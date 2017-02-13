@@ -76,6 +76,24 @@ declare module "claudia-bot-builder" {
                 addButton(title: string, value: string): this
             }
 
+            class Receipt extends FacebookTemplate {
+                constructor(name: string, orderNumber: string, currency: string, paymentMethod: string, text: string)
+                addTimestamp(timestamp: Date): this
+                addOrderUrl(url: string): this
+                addItem(title: string): this
+                addSubtitle(subtitle: string): this
+                addQuantity(quantity : number): this
+                addPrice(price: number): this
+                addCurrency(timestamp: string): this
+                addImage(url: string): this
+                addShippingAddress(street1: string, street2: string|null, city: string, zip: string, state: string, country: string): this
+                addAdjustment(name: string, amount: number): this
+                addSubtotal(subtotal : number): this
+                addShippingCost(shippingCost: number): this
+                addTax(tax: number): this
+                addTotal(total: number): this
+            }
+
             class List extends FacebookTemplate {
                 constructor(topElementStyle: 'large'|'compact')
                 bubbles: Array<{ image_url?: string }>
@@ -132,8 +150,13 @@ declare module "claudia-bot-builder" {
 declare module "dialogue-builder" {
     import { Request } from 'claudia-api-builder';
     import builder = require('claudia-bot-builder');
+    import FacebookTemplate = builder.fbTemplate.FacebookTemplate;
     import Message = builder.Message;
+    import Text = builder.fbTemplate.Text;
     import List = builder.fbTemplate.List;
+    import Button = builder.fbTemplate.Button;
+    import Attachment = builder.fbTemplate.Attachment;
+    export const defaultAction: symbol;
     export const location: symbol;
     export const onText: symbol;
     export const onLocation: symbol;
@@ -147,27 +170,26 @@ declare module "dialogue-builder" {
         constructor(message: string);
     }
     export type Label = String;
-    export class Statement {
+    export class Directive {
         private readonly text;
         constructor(text: string);
         toString(): string;
     }
-    export class Expect extends Statement {
+    export class Expect extends Directive {
     }
-    export class Goto extends Statement {
+    export class Goto extends Directive {
     }
-    export class Output extends Statement {
-        constructor(text: string);
+    export class Say extends Text {
     }
-    export class Say extends Output {
-    }
-    export class Ask extends Output {
-    }
-    export type Script = Array<Label | Statement | ResponseHandler>;
+    export type Script = Array<FacebookTemplate | Label | Directive | ResponseHandler>;
     export function say(template: TemplateStringsArray, ...substitutions: any[]): Say;
-    export function ask(template: TemplateStringsArray, ...substitutions: string[]): Ask;
+    export function ask(template: TemplateStringsArray, ...substitutions: string[]): Text;
     export function expect(template: TemplateStringsArray, ...substitutions: string[]): Expect;
     export function goto(template: TemplateStringsArray, ...substitutions: string[]): Goto;
+    export function audio(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
+    export function video(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
+    export function image(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
+    export function file(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
     export type ButtonHandler = {
         [title: string]: () => Goto | void;
     };

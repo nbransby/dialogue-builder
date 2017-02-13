@@ -151,15 +151,17 @@ interface Processor {
 }
 
 export class Dialogue<T> {
-    private readonly script: Script
+    private readonly build: () => void
     private readonly state: State
     private readonly handlers: Map<string, () =>  void | Goto>
+    private script: Script
     private outputSay: boolean
 
     public baseUrl: string
 
     constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]) {
-        this.script = builder(...context);
+        this.build = () => this.script = builder(...context);
+        this.build();
         this.handlers = new Map();
         this.outputSay = true;
         const templates = new Set();
@@ -201,7 +203,7 @@ export class Dialogue<T> {
             this.state.undo();  
         }
         const h = handler === 'restart' ? () => this.state.restart() : handler === 'undo' ? undo : handler;
-        keys.forEach(k => this.handlers.set(`keyword '${k}'`, h));
+        keys.forEach(k => this.handlers.set(`keyword '${k.toLowerCase()}'`, h));
     }
     
     private async process(message: Message, processor: Processor): Promise<string[]> {
@@ -210,12 +212,13 @@ export class Dialogue<T> {
         const output: Array<FacebookTemplate> = []
         if(message.originalRequest.postback) {
             const payload = message.originalRequest.postback.payload;
-            if(!processor.consumePostback(payload)) console.log(`Postback recieved with unknown payload '${payload}'`);
+            processor.consumePostback(payload) || processor.consumeKeyword(payload) 
+                || console.log(`Postback recieved with unknown payload '${payload}'`);
         } else if(!processor.consumeKeyword(message.text)) {
             const line = this.state.startLine;
             if(line > 0) try {
                 const goto = processor.consumeResponse(this.script[line - 1]);
-                goto && this.state.jump(goto, `expect \`${this.script[line - 2].toString()}\``);
+                goto instanceof Goto && this.state.jump(goto, `expect \`${this.script[line - 2].toString()}\``);
             } catch(e) {
                 if(!(e instanceof UnexpectedInputError)) throw e;
                 this.state.undo();
@@ -226,6 +229,8 @@ export class Dialogue<T> {
         if(this.state.isComplete) {
             throw [];
         }
+        //update script
+        this.build();
         //gather output
         for(let i = this.state.startLine; i < this.script.length; i++) {
             const element = this.script[i];
@@ -259,7 +264,7 @@ export class Dialogue<T> {
                 const handler = this.handlers.get(identifier);
                 if(!handler) return false;
                 const goto = handler();
-                goto && this.state.jump(goto, identifier);
+                goto instanceof Goto && this.state.jump(goto, identifier);
                 return true;                            
             },
             consumeResponse: handler => {
@@ -393,7 +398,7 @@ Text.prototype.getReadingDuration = function(this: Text) { return this.template.
 
 FacebookTemplate.prototype.setBaseUrl = function(this: List, url: string) { return this }
 List.prototype.setBaseUrl = function(this: List, url: string) { 
-    this.bubbles.filter(b => b.image_url).forEach(b => b.image_url = !b.image_url || b.image_url.indexOf('://') < 0 ? b.image_url : url + b.image_url);
+    this.bubbles.forEach(b => b.image_url = !b.image_url || b.image_url.indexOf('://') >= 0 ? b.image_url : url + b.image_url);
     return this;
 }
 
