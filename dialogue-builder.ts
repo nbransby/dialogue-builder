@@ -303,7 +303,7 @@ export class Dialogue<T> {
             },
             insertPauses: output => {
                 //calculate pauses between messages
-                const remaining = Math.min(10 * 1000, apiRequest.lambdaContext.getRemainingTimeInMillis());
+                const remaining = Math.min(10 * 1000, apiRequest.lambdaContext.getRemainingTimeInMillis() - 2);
                 const factor = Math.min(1, remaining / output.reduce((total, o) => total + o.getReadingDuration(), 0));
                 //get output and insert pauses
                 const messages: Array<{ get(): string}> = [new ChatAction('typing_on')];
