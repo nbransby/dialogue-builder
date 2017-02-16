@@ -17,7 +17,9 @@ export declare const onFile: symbol;
 export declare type ResponseHandler = any;
 export declare class UnexpectedInputError {
     message: string;
-    constructor(message: string);
+    repeatQuestion: boolean;
+    expect: Expect;
+    constructor(message: string, repeatQuestion?: boolean, expect?: Expect);
 }
 export declare class Directive {
     private readonly text;
@@ -52,15 +54,15 @@ export interface DialogueBuilder<T> {
     dialogueName: string;
 }
 export interface Storage {
-    store(state: Object): Promise<void>;
-    retrieve(): Promise<Object>;
+    store(state: any): any | Promise<any>;
+    retrieve(): any | Promise<any>;
 }
 export declare class Dialogue<T> {
     private readonly build;
     private readonly state;
     private readonly handlers;
     private script;
-    private outputSay;
+    private excludedOutput;
     baseUrl: string;
     constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]);
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void;

@@ -167,7 +167,9 @@ declare module "dialogue-builder" {
     export type ResponseHandler = any;
     export class UnexpectedInputError {
         message: string;
-        constructor(message: string);
+        repeatQuestion: boolean;
+        expect: Expect;
+        constructor(message: string, repeatQuestion?: boolean, expect?: Expect);
     }
     export type Label = String;
     export class Directive {
@@ -201,8 +203,8 @@ declare module "dialogue-builder" {
         dialogueName: string;
     }
     export interface Storage {
-        store(state: Object): Promise<void>;
-        retrieve(): Promise<Object>;
+        store(state: any): any | Promise<any>
+        retrieve(): any | Promise<any>
     }
     export class Dialogue<T> {
         private readonly script;

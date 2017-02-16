@@ -21,17 +21,17 @@ export const onFile = Symbol("a file")
 
 export type ResponseHandler = any
 // export interface ResponseHandler {
-//     readonly [quickReply: string]: () => Goto | void
-//     readonly [location]?(lat: number, long: number, title?: string, url?: string): Goto | void
-//     readonly [onText]?(text: string): Goto | void;
-//     readonly [onLocation]?(lat: number, long: number, title?: string, url?: string): Goto | void;
-//     readonly [onImage]?(url: string): Goto | void;
+//     readonly [quickReply: string]: () => Goto | Expect | void
+//     readonly [location]?(lat: number, long: number, title?: string, url?: string): Goto | Expect | void
+//     readonly [onText]?(text: string): Goto | Expect | void;
+//     readonly [onLocation]?(lat: number, long: number, title?: string, url?: string): Goto | Expect | void;
+//     readonly [onImage]?(url: string): Goto | Expect | void;
 // }
 
 const ordinals = ['first', 'second', 'third', 'forth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth']
 
 export class UnexpectedInputError {
-    constructor(public message: string) {}
+    constructor(public message: string, public repeatQuestion: boolean = true, public expect?: Expect) {}
 }
 
 class UndefinedHandlerError extends UnexpectedInputError {
@@ -138,14 +138,14 @@ export interface DialogueBuilder<T> {
 }
 
 export interface Storage {
-    store(state: Object): Promise<void>
-    retrieve(): Promise<Object>
+    store(state: any): any | Promise<any>
+    retrieve(): any | Promise<any>
 }
 
 interface Processor { 
     consumePostback(identifier: string): boolean
     consumeKeyword(keyword: string): boolean 
-    consumeResponse(handler: ResponseHandler): void | Goto, 
+    consumeResponse(handler: ResponseHandler): void | Goto | Expect, 
     addQuickReplies(message: FacebookTemplate, handler: ResponseHandler): this
     insertPauses(output: FacebookTemplate[]): Array<{ get(): string}>
 }
@@ -155,7 +155,7 @@ export class Dialogue<T> {
     private readonly state: State
     private readonly handlers: Map<string, () =>  void | Goto>
     private script: Script
-    private outputSay: boolean
+    private excludedOutput: typeof Text | typeof Say | undefined
 
     public baseUrl: string
 
@@ -163,7 +163,6 @@ export class Dialogue<T> {
         this.build = () => this.script = builder(...context);
         this.build();
         this.handlers = new Map();
-        this.outputSay = true;
         const templates = new Set();
         const labels = new Map();
         const expects = new Map();
@@ -199,8 +198,8 @@ export class Dialogue<T> {
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)) {
         const keys = keywords instanceof Array ? keywords : [keywords];
         const undo = () => { 
-            this.outputSay = false; 
-            this.state.undo();  
+            this.excludedOutput = Say; 
+            this.state.undo(2);  
         }
         const h = handler === 'restart' ? () => this.state.restart() : handler === 'undo' ? undo : handler;
         keys.forEach(k => this.handlers.set(`keyword '${k.toLowerCase()}'`, h));
@@ -217,13 +216,18 @@ export class Dialogue<T> {
         } else if(!processor.consumeKeyword(message.text)) {
             const line = this.state.startLine;
             if(line > 0) try {
-                const goto = processor.consumeResponse(this.script[line - 1]);
-                goto instanceof Goto && this.state.jump(goto, `expect \`${this.script[line - 2].toString()}\``);
+                const processResponse = (line: number): void => {
+                    const result = processor.consumeResponse(this.script[line - 1]);
+                    if(!(result instanceof Directive)) return;
+                    line = this.state.jump(result, `expect \`${this.script[line - 2].toString()}\``);
+                    result instanceof Expect && processResponse(line);
+                }
+                processResponse(line);
             } catch(e) {
                 if(!(e instanceof UnexpectedInputError)) throw e;
-                this.state.undo();
+                this.state.undo(1);
                 output.push(new Text(e.message));
-                this.outputSay = false;
+                this.excludedOutput = e.repeatQuestion ? Say : Text;
             }
         }
         if(this.state.isComplete) {
@@ -236,9 +240,9 @@ export class Dialogue<T> {
             const element = this.script[i];
             //if element is output
             if(element instanceof FacebookTemplate) {
-                if(this.outputSay || !(element instanceof Say)) output.push(element);
+                if(!(this.excludedOutput && element instanceof this.excludedOutput)) output.push(element);
             } else if(element instanceof Goto) {
-                i = this.state.jump(element, i)
+                i = this.state.jump(element, i) - 1
             } else if(typeof element === 'string') {
                 //if element is a breaking label
                 if(element.startsWith('!')) break;
@@ -326,7 +330,7 @@ class State {
     }
 
     async retrieveState() {
-        this.state = this.state || await this.storage.retrieve() as any || [];
+        this.state = this.state || await this.storage.retrieve() || [];
     }
 
     get isComplete(): boolean {
@@ -338,9 +342,9 @@ class State {
         assert(this.state);
         switch(this.state[0] && this.state[0].type) {
             case 'expect': 
-                return this.expects.get(this.state[0].name!) + 2 || 0;
+                return this.expects.get(this.state[0].name!)! + 2 || 0;
             case 'label': 
-                return this.labels.get(this.state[0].name!) + 1 || 0;
+                return this.labels.get(this.state[0].name!)! + 1 || 0;
             case undefined:
                 return 0;
             default: 
@@ -348,16 +352,23 @@ class State {
         }
     }
 
-    jump(goto: Goto, lineOrIdentifier: number|string): number {
+    jump(location: Goto|Expect, lineOrIdentifier: number|string): number {
         assert(this.state);
-        const label = goto.toString().startsWith('!') ? goto.toString().substring(1) : goto.toString();
-        if(!this.labels.has(label)) throw new Error(`Could not find label referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: goto \`${goto.toString()}\``);
-        if(++this.jumpCount > 10) throw new Error(`Endless loop detected ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: goto \`${goto.toString()}\``);
-        console.log(`Jumping to label '${goto.toString()}' from ${typeof lineOrIdentifier == 'number' ? 'line' : ''} ${lineOrIdentifier}: goto \`${goto.toString()}\``);
-        if(this.isComplete) this.state.shift(); 
-        this.state.unshift({ type: 'label', name: label});
-        return this.startLine - 1;
+        if(++this.jumpCount > 10) throw new Error(`Endless loop detected ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: ${location.constructor.name.toLowerCase()} \`${location.toString()}\``);
+        if(location instanceof Expect) {
+            if(!this.expects.has(location.toString())) throw new Error(`Could not find expect referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: expect \`${location.toString()}\``);        
+            const count = this.state.findIndex(s => s.type === 'expect' && s.name === expect.toString()) + 1
+            this.state.splice(0, count, { type: 'expect', name: expect.toString() });    
+        } else {
+            const label = location.toString().startsWith('!') ? location.toString().substring(1) : location.toString();
+            if(!this.labels.has(label)) throw new Error(`Could not find label referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: goto \`${location.toString()}\``);        
+            console.log(`Jumping to label '${label}' from ${typeof lineOrIdentifier == 'number' ? 'line' : ''} ${lineOrIdentifier}: goto \`${location.toString()}\``);
+            if(this.isComplete) this.state.shift(); 
+            this.state.unshift({ type: 'label', name: label});
+        }
+        return this.startLine;
     }
+
 
     async complete(expect?: Expect) {
         assert(this.state);
@@ -370,9 +381,9 @@ class State {
         this.state.length = 0;
     }
 
-    undo() {
+    undo(steps: number) {
         assert(this.state);
-        this.state.splice(0, this.state.findIndex((s, i) => (i > 0 && s.type === 'expect') || i + 1 === this.state.length) + 1);
+        this.state.splice(0, this.state.findIndex((s, i) => (i+1 == steps && s.type === 'expect') || i + 1 === this.state.length) + 1);                
     }
 }
 

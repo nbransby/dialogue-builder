@@ -493,15 +493,19 @@ describe("Dialogue", () => {
 
     it("handles unexpected response types by repeating only the ask statements", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
+            ask `What do you sound like?`,
+            expect `I sound like`, {
+                [onAudio]: (url: string) => null
+            },
             ask `What do you write like?`,
             say `This won't be repeated`,
             ask `Send us a word document`,
             expect `I write like`, {
                 [onFile]: (url: string) => null
             },
-        ], [{ type: 'expect', name: `I write like` }]);
+        ], [{ type: 'expect', name: `I write like` }, { type: 'expect', name: `I sound like` }]);
         const result = await dialogue.consume(this.multimedia("audio", "recording.wav"), this.apiRequest);
-        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: `I write like` }]);
+        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: `I write like` }, { type: 'expect', name: `I sound like` }]);
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Sorry, I didn't quite catch that, I was expecting a file` }),
             jasmine.objectContaining({ text: `What do you write like?` }),
