@@ -311,12 +311,13 @@ export class Dialogue<T> {
                 const remaining = Math.min(10 * 1000, apiRequest.lambdaContext.getRemainingTimeInMillis() - 2);
                 const factor = Math.min(1, remaining / output.reduce((total, o) => total + o.getReadingDuration(), 0));
                 //get output and insert pauses
-                const messages: Array<{ get(): string}> = [new ChatAction('typing_on')];
+                const messages: Array<{ get(): string}> = [];
                 output.forEach(message => messages.push(
                     message.setBaseUrl(this.baseUrl).setNotificationType('NO_PUSH'), 
+                    new ChatAction('typing_on'),
                     new Pause(message.getReadingDuration() * factor)
                 ));
-                messages[messages.length-1] = new ChatAction('typing_off');
+                messages.length -= 2;
                 return messages;
             }
         })

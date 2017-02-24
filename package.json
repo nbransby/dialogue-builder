@@ -15,8 +15,8 @@
     "@types/node": "^7.0.4",
     "babel": "^6.5.2",
     "babel-cli": "^6.22.2",
-    "babel-plugin-transform-es2015-parameters": "^6.22.0",
     "babel-plugin-transform-es2015-destructuring": "^6.22.0",
+    "babel-plugin-transform-es2015-parameters": "^6.22.0",
     "babel-plugin-transform-es2015-spread": "^6.22.0",
     "babel-preset-env": "^1.1.8",
     "codecov": "^1.0.1",
@@ -29,7 +29,7 @@
     "line-number": "^0.1.0",
     "nyc": "^10.0.0",
     "ts-node": "^2.1.0",
-    "typescript": "^2.1.4"
+    "typescript": "^2.2.1"
   },
   "scripts": {
     "pretest": "tsc && babel dialogue-builder.js -o dialogue-builder.js && eslint dialogue-builder.js ",
