@@ -163,17 +163,16 @@ describe("Dialogue", () => {
             .catch(() => jasmine.expect(storage.store).toHaveBeenCalledTimes(1))
     });
         
-    it("sends multiple messages at once surrounded with typing indicators with pauses inbetween", async function(this: This) {
+    it("sends multiple messages at once with pauses and typing indicators inbetween", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
             say `Hi!`,
             ask `How are you?`,
         ], []);
         jasmine.expect(await dialogue.consume(this.postback(), this.apiRequest)).toEqual([
-            { sender_action: 'typing_on' }, 
             jasmine.objectContaining({ text: 'Hi!' }), 
+            { sender_action: 'typing_on' }, 
             { claudiaPause: jasmine.anything() },
             jasmine.objectContaining({ text: `How are you?` }),
-            { sender_action: 'typing_off' }
         ]);
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete' }]);
     });

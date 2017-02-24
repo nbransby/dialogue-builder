@@ -146,7 +146,7 @@ export interface Storage {
 interface Processor { 
     consumePostback(identifier: string): boolean
     consumeKeyword(keyword: string): boolean 
-    consumeResponse(handler: ResponseHandler): void | Goto | Expect, 
+    consumeResponse(handler: ResponseHandler): Promise<void | Goto | Expect>, 
     addQuickReplies(message: FacebookTemplate, handler: ResponseHandler): this
     insertPauses(output: FacebookTemplate[]): Array<{ get(): string}>
 }
@@ -217,13 +217,13 @@ export class Dialogue<T> {
         } else if(!processor.consumeKeyword(message.text)) {
             const line = this.state.startLine;
             if(line > 0) try {
-                const processResponse = (line: number): void => {
-                    const result = processor.consumeResponse(this.script[line - 1]);
+                const processResponse = async (line: number): Promise<void> => {
+                    const result = await processor.consumeResponse(this.script[line - 1]);
                     if(!(result instanceof Directive)) return;
                     line = this.state.jump(result, `expect \`${this.script[line - 2].toString()}\``);
-                    result instanceof Expect && processResponse(line);
+                    result instanceof Expect && await processResponse(line);
                 }
-                processResponse(line);
+                await processResponse(line);
             } catch(e) {
                 if(!(e instanceof UnexpectedInputError)) throw e;
                 this.state.undo(1);
