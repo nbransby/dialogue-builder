@@ -31,7 +31,7 @@ export type ResponseHandler = any
 const ordinals = ['first', 'second', 'third', 'forth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth']
 
 export class UnexpectedInputError {
-    constructor(public message: string, public repeatQuestion: boolean = true, public expect?: Expect) {}
+    constructor(public message: string, public repeatQuestion: boolean = true) {}
 }
 
 class UndefinedHandlerError extends UnexpectedInputError {
@@ -52,39 +52,40 @@ export class Directive {
 export type Label = String
 export class Expect extends Directive {}
 export class Goto extends Directive {}
-export class Say extends Text {}
+
+class Ask extends Text {}
 
 export type Script = Array<FacebookTemplate | Label | Directive | ResponseHandler>
 
-export function say(template: TemplateStringsArray, ...substitutions: any[]): Say {
-    return new Say(String.raw(template, ...substitutions).replace(/([\s]) +/g, '$1'));
-}
-
-export function ask(template: TemplateStringsArray, ...substitutions: string[]): Text {
+export function say(template: TemplateStringsArray, ...substitutions: any[]): Text {
     return new Text(String.raw(template, ...substitutions).replace(/([\s]) +/g, '$1'));
 }
 
-export function expect(template: TemplateStringsArray, ...substitutions: string[]): Expect {
+export function ask(template: TemplateStringsArray, ...substitutions: any[]): Text {
+    return new Ask(String.raw(template, ...substitutions).replace(/([\s]) +/g, '$1'));
+}
+
+export function expect(template: TemplateStringsArray, ...substitutions: any[]): Expect {
     return new Expect(String.raw(template, ...substitutions));
 }
 
-export function goto(template: TemplateStringsArray, ...substitutions: string[]): Goto {
+export function goto(template: TemplateStringsArray, ...substitutions: any[]): Goto {
     return new Goto(String.raw(template, ...substitutions));
 }
 
-export function audio(template: TemplateStringsArray, ...substitutions: string[]): Attachment {
+export function audio(template: TemplateStringsArray, ...substitutions: any[]): Attachment {
     return new Attachment(String.raw(template, ...substitutions), 'audio');
 }
 
-export function video(template: TemplateStringsArray, ...substitutions: string[]): Attachment {
+export function video(template: TemplateStringsArray, ...substitutions: any[]): Attachment {
     return new Attachment(String.raw(template, ...substitutions), 'video');
 }
 
-export function image(template: TemplateStringsArray, ...substitutions: string[]): Attachment {
+export function image(template: TemplateStringsArray, ...substitutions: any[]): Attachment {
     return new Attachment(String.raw(template, ...substitutions), 'image');
 }
 
-export function file(template: TemplateStringsArray, ...substitutions: string[]): Attachment {
+export function file(template: TemplateStringsArray, ...substitutions: any[]): Attachment {
     return new Attachment(String.raw(template, ...substitutions), 'file');
 }
 
@@ -155,7 +156,7 @@ export class Dialogue<T> {
     private readonly state: State
     private readonly handlers: Map<string, () =>  void | Goto>
     private script: Script
-    private excludedOutput: typeof Text | typeof Say | undefined
+    private outputFilter: (o: FacebookTemplate) => boolean
 
     public baseUrl: string
 
@@ -186,7 +187,7 @@ export class Dialogue<T> {
                 if(value.identifier) templates.add(value.identifier);
                 (value.postbacks || []).forEach(p => this.handlers.set(p[0], p[1]));
             } else {
-                throw new Error(`Response handler must be preceeded by an expect statement on line ${line}: expect \`${value}\``)
+                throw new Error(`Response handler must be preceeded by an expect statement on line ${line}`)
             }
         }
         if(labels.size == this.script.length) throw new Error('Dialogue cannot be empty');
@@ -198,7 +199,7 @@ export class Dialogue<T> {
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)) {
         const keys = keywords instanceof Array ? keywords : [keywords];
         const undo = () => { 
-            this.excludedOutput = Say; 
+            this.outputFilter = o => o instanceof Ask; 
             this.state.undo(2);  
         }
         const h = handler === 'restart' ? () => this.state.restart() : handler === 'undo' ? undo : handler;
@@ -227,7 +228,7 @@ export class Dialogue<T> {
                 if(!(e instanceof UnexpectedInputError)) throw e;
                 this.state.undo(1);
                 output.push(new Text(e.message));
-                this.excludedOutput = e.repeatQuestion ? Say : Text;
+                this.outputFilter = o => e.repeatQuestion ? o instanceof Ask : false;
             }
         }
         if(this.state.isComplete) {
@@ -240,7 +241,7 @@ export class Dialogue<T> {
             const element = this.script[i];
             //if element is output
             if(element instanceof FacebookTemplate) {
-                if(!(this.excludedOutput && element instanceof this.excludedOutput)) output.push(element);
+                if(!this.outputFilter || this.outputFilter(element)) output.push(element);
             } else if(element instanceof Goto) {
                 i = this.state.jump(element, i) - 1
             } else if(typeof element === 'string') {
@@ -297,7 +298,7 @@ export class Dialogue<T> {
                             throw new Error(`Unsupported attachment type '${attachment.type}'`)
                     }
                 }
-                return handle(handler, m => m(message.text), message.text, onText);
+                return handle(handler, m => m(message.text), message.text, onText, defaultAction);
             },
             addQuickReplies(this: Processor, message, handler) {
                 //add quick replies if present
@@ -345,6 +346,8 @@ class State {
                 return this.expects.get(this.state[0].name!)! + 2 || 0;
             case 'label': 
                 return this.labels.get(this.state[0].name!)! + 1 || 0;
+            case 'complete':
+                return -1;
             case undefined:
                 return 0;
             default: 
@@ -357,8 +360,8 @@ class State {
         if(++this.jumpCount > 10) throw new Error(`Endless loop detected ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: ${location.constructor.name.toLowerCase()} \`${location.toString()}\``);
         if(location instanceof Expect) {
             if(!this.expects.has(location.toString())) throw new Error(`Could not find expect referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: expect \`${location.toString()}\``);        
-            const count = this.state.findIndex(s => s.type === 'expect' && s.name === expect.toString()) + 1
-            this.state.splice(0, count, { type: 'expect', name: expect.toString() });    
+            const count = this.state.findIndex(s => s.type === 'expect' && s.name === location.toString()) + 1;
+            this.state.splice(0, count, { type: 'expect', name: location.toString() });    
         } else {
             const label = location.toString().startsWith('!') ? location.toString().substring(1) : location.toString();
             if(!this.labels.has(label)) throw new Error(`Could not find label referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: goto \`${location.toString()}\``);        
@@ -383,7 +386,7 @@ class State {
 
     undo(steps: number) {
         assert(this.state);
-        this.state.splice(0, this.state.findIndex((s, i) => (i+1 == steps && s.type === 'expect') || i + 1 === this.state.length) + 1);                
+        this.state.splice(0, this.state.findIndex((s, i) => (i+1 >= steps && s.type === 'expect') || i+1 === this.state.length) + 1);                
     }
 }
 

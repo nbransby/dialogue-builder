@@ -18,8 +18,7 @@ export declare type ResponseHandler = any;
 export declare class UnexpectedInputError {
     message: string;
     repeatQuestion: boolean;
-    expect: Expect;
-    constructor(message: string, repeatQuestion?: boolean, expect?: Expect);
+    constructor(message: string, repeatQuestion?: boolean);
 }
 export declare class Directive {
     private readonly text;
@@ -31,17 +30,15 @@ export declare class Expect extends Directive {
 }
 export declare class Goto extends Directive {
 }
-export declare class Say extends Text {
-}
 export declare type Script = Array<FacebookTemplate | Label | Directive | ResponseHandler>;
-export declare function say(template: TemplateStringsArray, ...substitutions: any[]): Say;
-export declare function ask(template: TemplateStringsArray, ...substitutions: string[]): Text;
-export declare function expect(template: TemplateStringsArray, ...substitutions: string[]): Expect;
-export declare function goto(template: TemplateStringsArray, ...substitutions: string[]): Goto;
-export declare function audio(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
-export declare function video(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
-export declare function image(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
-export declare function file(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
+export declare function say(template: TemplateStringsArray, ...substitutions: any[]): Text;
+export declare function ask(template: TemplateStringsArray, ...substitutions: any[]): Text;
+export declare function expect(template: TemplateStringsArray, ...substitutions: any[]): Expect;
+export declare function goto(template: TemplateStringsArray, ...substitutions: any[]): Goto;
+export declare function audio(template: TemplateStringsArray, ...substitutions: any[]): Attachment;
+export declare function video(template: TemplateStringsArray, ...substitutions: any[]): Attachment;
+export declare function image(template: TemplateStringsArray, ...substitutions: any[]): Attachment;
+export declare function file(template: TemplateStringsArray, ...substitutions: any[]): Attachment;
 export declare type ButtonHandler = {
     [title: string]: () => Goto | void;
 };
@@ -62,7 +59,7 @@ export declare class Dialogue<T> {
     private readonly state;
     private readonly handlers;
     private script;
-    private excludedOutput;
+    private outputFilter;
     baseUrl: string;
     constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]);
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void;

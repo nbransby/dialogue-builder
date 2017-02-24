@@ -14,5 +14,6 @@
     "files.autoSave": "onFocusChange",
     "editor.fontLigatures": true,
     "editor.fontFamily": "Fira Code",
-    "editor.fontSize": 14
- }
+    "editor.fontSize": 14,
+    "vsicons.presets.angular": false
+}

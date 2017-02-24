@@ -163,7 +163,7 @@ describe("Dialogue", () => {
             .catch(() => jasmine.expect(storage.store).toHaveBeenCalledTimes(1))
     });
         
-    it("sends muliple messages at once surrounded with typing indicators with pauses inbetween", async function(this: This) {
+    it("sends multiple messages at once surrounded with typing indicators with pauses inbetween", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
             say `Hi!`,
             ask `How are you?`,
@@ -178,7 +178,7 @@ describe("Dialogue", () => {
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete' }]);
     });
 
-    it("trims extranous whitespace in messages", async function(this: This) {
+    it("trims extraneous whitespace in messages", async function(this: This) {
         const [dialogue] = this.build(() => [
             say `Hi   
             there!`
@@ -224,10 +224,10 @@ describe("Dialogue", () => {
 
     it("throws an exception on expect statement not followed by a response handler", async function(this: This) {
         const test = (script: Script) => {
-        const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
-        jasmine.expect(() => this.build(() => script, [], storage))
-            .toThrow(jasmine.stringMatching('Expect statement must be followed by a response handler'));
-        jasmine.expect(storage.store).not.toHaveBeenCalled();
+            const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
+            jasmine.expect(() => this.build(() => script, [], storage))
+                .toThrow(jasmine.stringMatching('Expect statement must be followed by a response handler'));
+            jasmine.expect(storage.store).not.toHaveBeenCalled();
         }
         //missing handler
         test([
@@ -503,6 +503,7 @@ describe("Dialogue", () => {
             expect `I write like`, {
                 [onFile]: (url: string) => null
             },
+            ask `How are you?`
         ], [{ type: 'expect', name: `I write like` }, { type: 'expect', name: `I sound like` }]);
         const result = await dialogue.consume(this.multimedia("audio", "recording.wav"), this.apiRequest);
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: `I write like` }, { type: 'expect', name: `I sound like` }]);
