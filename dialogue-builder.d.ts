@@ -1,7 +1,7 @@
 import { Request } from 'claudia-api-builder';
 import builder = require('claudia-bot-builder');
 import Message = builder.Message;
-import FacebookTemplate = builder.fbTemplate.FacebookTemplate;
+import BaseTemplate = builder.fbTemplate.BaseTemplate;
 import Text = builder.fbTemplate.Text;
 import List = builder.fbTemplate.List;
 import Button = builder.fbTemplate.Button;
@@ -30,7 +30,7 @@ export declare class Expect extends Directive {
 }
 export declare class Goto extends Directive {
 }
-export declare type Script = Array<FacebookTemplate | Label | Directive | ResponseHandler>;
+export declare type Script = Array<BaseTemplate | Label | Directive | ResponseHandler>;
 export declare function say(template: TemplateStringsArray, ...substitutions: any[]): Text;
 export declare function ask(template: TemplateStringsArray, ...substitutions: any[]): Text;
 export declare function expect(template: TemplateStringsArray, ...substitutions: any[]): Expect;
@@ -68,7 +68,7 @@ export declare class Dialogue<T> {
 }
 declare module "claudia-bot-builder" {
     namespace fbTemplate {
-        interface FacebookTemplate {
+        interface BaseTemplate {
             getReadingDuration: () => number;
             setBaseUrl: (url: string) => this;
             postbacks?: [string, () => Goto | void][];

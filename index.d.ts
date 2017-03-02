@@ -40,43 +40,43 @@ declare module "claudia-bot-builder" {
 
         namespace fbTemplate {
 
-            class FacebookTemplate {
+            class BaseTemplate {
                 get(): string 
                 setNotificationType(type: 'REGULAR'|'SILENT_PUSH'|'NO_PUSH'): this
                 addQuickReply(title: string, payload: string, image?: string): this
                 addQuickReplyLocation(): this
             }
 
-            class Text extends FacebookTemplate {
+            class Text extends BaseTemplate {
                 constructor(text: string)
             }
 
-            class Attachment extends FacebookTemplate {
+            class Attachment extends BaseTemplate {
                 constructor(url: string, type?: 'file'|'image'|'audio'|'video')
             }
 
-            class File extends FacebookTemplate {
+            class File extends BaseTemplate {
                 constructor(url: string)
             }
 
-            class Image extends FacebookTemplate {
+            class Image extends BaseTemplate {
                 constructor(url: string)
             }
 
-            class Audio extends FacebookTemplate {
+            class Audio extends BaseTemplate {
                 constructor(url: string)
             }
 
-            class Video extends FacebookTemplate {
+            class Video extends BaseTemplate {
                 constructor(url: string)
             }
 
-            class Button extends FacebookTemplate {
+            class Button extends BaseTemplate {
                 constructor(text: string)
                 addButton(title: string, value: string): this
             }
 
-            class Receipt extends FacebookTemplate {
+            class Receipt extends BaseTemplate {
                 constructor(name: string, orderNumber: string, currency: string, paymentMethod: string, text: string)
                 addTimestamp(timestamp: Date): this
                 addOrderUrl(url: string): this
@@ -94,7 +94,7 @@ declare module "claudia-bot-builder" {
                 addTotal(total: number): this
             }
 
-            class List extends FacebookTemplate {
+            class List extends BaseTemplate {
                 constructor(topElementStyle: 'large'|'compact')
                 bubbles: Array<{ image_url?: string }>
                 addBubble(title: string, subtitle?: string): this
@@ -150,7 +150,7 @@ declare module "claudia-bot-builder" {
 declare module "dialogue-builder" {
     import { Request } from 'claudia-api-builder';
     import builder = require('claudia-bot-builder');
-    import FacebookTemplate = builder.fbTemplate.FacebookTemplate;
+    import FacebookTemplate = builder.fbTemplate.BaseTemplate;
     import Message = builder.Message;
     import Text = builder.fbTemplate.Text;
     import List = builder.fbTemplate.List;

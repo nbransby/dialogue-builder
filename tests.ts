@@ -239,14 +239,14 @@ describe("Dialogue", () => {
         ]);
     });
 
-    it("throws an exception on a response handler not preceeded by an expect statement", async function(this: This) {
+    it("throws an exception on a response handler not preceded by an expect statement", async function(this: This) {
         const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
         jasmine.expect(() => this.build(() => [
                 say `Hi`, {
                     "Hi": null
                 }
             ], [], storage)
-        ).toThrow(jasmine.stringMatching('Response handler must be preceeded by an expect statement'));
+        ).toThrow(jasmine.stringMatching('Response handler must be preceded by an expect statement'));
         jasmine.expect(storage.store).not.toHaveBeenCalled();
     });
 

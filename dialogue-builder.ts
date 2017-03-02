@@ -2,7 +2,7 @@ import assert = require('assert');
 import { Request } from 'claudia-api-builder'
 import builder = require('claudia-bot-builder')
 import Message = builder.Message;
-import FacebookTemplate = builder.fbTemplate.FacebookTemplate
+import BaseTemplate = builder.fbTemplate.BaseTemplate
 import Text = builder.fbTemplate.Text;
 import Pause = builder.fbTemplate.Pause;
 import List = builder.fbTemplate.List;
@@ -55,7 +55,7 @@ export class Goto extends Directive {}
 
 class Ask extends Text {}
 
-export type Script = Array<FacebookTemplate | Label | Directive | ResponseHandler>
+export type Script = Array<BaseTemplate | Label | Directive | ResponseHandler>
 
 export function say(template: TemplateStringsArray, ...substitutions: any[]): Text {
     return new Text(String.raw(template, ...substitutions).replace(/([\s]) +/g, '$1'));
@@ -147,8 +147,8 @@ interface Processor {
     consumePostback(identifier: string): boolean
     consumeKeyword(keyword: string): boolean 
     consumeResponse(handler: ResponseHandler): Promise<void | Goto | Expect>, 
-    addQuickReplies(message: FacebookTemplate, handler: ResponseHandler): this
-    insertPauses(output: FacebookTemplate[]): Array<{ get(): string}>
+    addQuickReplies(message: BaseTemplate, handler: ResponseHandler): this
+    insertPauses(output: BaseTemplate[]): Array<{ get(): string}>
 }
 
 export class Dialogue<T> {
@@ -156,7 +156,7 @@ export class Dialogue<T> {
     private readonly state: State
     private readonly handlers: Map<string, () =>  void | Goto>
     private script: Script
-    private outputFilter: (o: FacebookTemplate) => boolean
+    private outputFilter: (o: BaseTemplate) => boolean
 
     public baseUrl: string
 
@@ -174,7 +174,7 @@ export class Dialogue<T> {
                 if(expects.has(value.toString())) throw new Error(`Duplicate expect statement found on line ${line}: expect \`${value}\``);
                 expects.set(value.toString(), line);   
                 const handler = this.script[++line];
-                if(!handler || handler instanceof Directive|| handler instanceof FacebookTemplate) throw new Error(`Expect statement must be followed by a response handler on line ${line}: expect \`${value}\``);
+                if(!handler || handler instanceof Directive|| handler instanceof BaseTemplate) throw new Error(`Expect statement must be followed by a response handler on line ${line}: expect \`${value}\``);
                 if(handler.hasOwnProperty(location) && handler.hasOwnProperty(onLocation)) throw new Error(`Both location and onLocation implemented in the same response handler on line ${line}: expect \`${value}\``);
             } else if(typeof value === 'string') {
                 const label = value.startsWith('!') ? value.substring(1) : value;
@@ -182,12 +182,12 @@ export class Dialogue<T> {
                 labels.set(label, line);   
             } else if(value instanceof Goto) {
                 gotos.push({line: line, label: value.toString()});
-            } else if(value instanceof FacebookTemplate) {
+            } else if(value instanceof BaseTemplate) {
                 if(templates.has(value.identifier)) throw new Error(`Duplicate identifier found on line ${line} for ${value.identifier}`);
                 if(value.identifier) templates.add(value.identifier);
                 (value.postbacks || []).forEach(p => this.handlers.set(p[0], p[1]));
-            } else {
-                throw new Error(`Response handler must be preceeded by an expect statement on line ${line}`)
+            } else if(value !== null) {
+                throw new Error(`Response handler must be preceded by an expect statement on line ${line}`)
             }
         }
         if(labels.size == this.script.length) throw new Error('Dialogue cannot be empty');
@@ -209,11 +209,11 @@ export class Dialogue<T> {
     private async process(message: Message, processor: Processor): Promise<string[]> {
         await this.state.retrieveState();
         //process input
-        const output: Array<FacebookTemplate> = []
+        const output: Array<BaseTemplate> = []
         if(message.originalRequest.postback) {
             const payload = message.originalRequest.postback.payload;
             processor.consumePostback(payload) || processor.consumeKeyword(payload) 
-                || console.log(`Postback recieved with unknown payload '${payload}'`);
+                || console.log(`Postback received with unknown payload '${payload}'`);
         } else if(!processor.consumeKeyword(message.text)) {
             const line = this.state.startLine;
             if(line > 0) try {
@@ -240,7 +240,7 @@ export class Dialogue<T> {
         for(let i = this.state.startLine; i < this.script.length; i++) {
             const element = this.script[i];
             //if element is output
-            if(element instanceof FacebookTemplate) {
+            if(element instanceof BaseTemplate) {
                 if(!this.outputFilter || this.outputFilter(element)) output.push(element);
             } else if(element instanceof Goto) {
                 i = this.state.jump(element, i) - 1
@@ -393,7 +393,7 @@ class State {
 
 declare module "claudia-bot-builder" {
     namespace fbTemplate {
-        interface FacebookTemplate {
+        interface BaseTemplate {
             getReadingDuration: () => number
             setBaseUrl: (url: string) => this
             postbacks?: [string, () => Goto | void][]
@@ -408,10 +408,10 @@ declare module "claudia-bot-builder" {
     }
 }
 
-FacebookTemplate.prototype.getReadingDuration = () => 1000;
+BaseTemplate.prototype.getReadingDuration = () => 1000;
 Text.prototype.getReadingDuration = function(this: Text) { return this.template.text.match(/\w+/g)!.length * 250; }
 
-FacebookTemplate.prototype.setBaseUrl = function(this: List, url: string) { return this }
+BaseTemplate.prototype.setBaseUrl = function(this: List, url: string) { return this }
 List.prototype.setBaseUrl = function(this: List, url: string) { 
     this.bubbles.forEach(b => b.image_url = !b.image_url || b.image_url.indexOf('://') >= 0 ? b.image_url : url + b.image_url);
     return this;
