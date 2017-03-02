@@ -165,11 +165,18 @@ declare module "dialogue-builder" {
     export const onVideo: symbol;
     export const onFile: symbol;
     export type ResponseHandler = any;
+// export interface ResponseHandler {
+//     readonly [quickReply: string]: () => Goto | Expect | void | Promise<Goto | Expect | void>
+//     readonly [location]?(lat: number, long: number, title?: string, url?: string): Goto | Expect | void | Promise<Goto | Expect | void>
+//     readonly [onText]?(text: string): Goto | Expect | void | Promise<Goto | Expect | void>
+//     readonly [onLocation]?(lat: number, long: number, title?: string, url?: string): Goto | Expect | void | Promise<Goto | Expect | void>
+//     readonly [onImage]?(url: string): Goto | Expect | void;
+// }
     export class UnexpectedInputError {
         message: string;
         repeatQuestion: boolean;
         expect: Expect;
-        constructor(message: string, repeatQuestion?: boolean, expect?: Expect);
+        constructor(message: string, repeatQuestion?: boolean);
     }
     export type Label = String;
     export class Directive {
@@ -216,6 +223,6 @@ declare module "dialogue-builder" {
         setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void;
         private process(dialogue, processor);
         private static handle<T>(handler, invoke, ...keys);
-        consume(message: Message, apiRequest: Request, onComplete?: () => void): Promise<string[]>;
+        consume(message: Message, apiRequest: Request, onComplete?: () => void): Promise<any[]>;
     }
 }

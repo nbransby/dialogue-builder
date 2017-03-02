@@ -1,5 +1,5 @@
 
-import { Dialogue, dialogue, Storage, Script, goto, say, ask, expect, onText, location, onLocation, onFile, onAudio, onImage, onVideo, image, audio, buttons, list } from './dialogue-builder'
+import { Dialogue, dialogue, Storage, Script, goto, say, ask, expect, onText, location, onLocation, onFile, onAudio, onImage, onVideo, image, audio, buttons, list, defaultAction, UnexpectedInputError } from './dialogue-builder'
 import { Request } from 'claudia-api-builder'
 import { Message, fbTemplate } from 'claudia-bot-builder'
 
@@ -110,9 +110,9 @@ describe("Dialogue", () => {
     
     it("passes the supplied context to the script method", async function(this: This) {
         const [dialogue] = this.build(context => {
-            jasmine.expect(context).toBe('mycontext');
+            jasmine.expect(context).toBe('context');
             return [ say `Hi!`]
-        }, [], undefined, 'mycontext');
+        }, [], undefined, 'context');
         await dialogue.consume(this.postback(), this.apiRequest)
     });
 
@@ -163,7 +163,7 @@ describe("Dialogue", () => {
             .catch(() => jasmine.expect(storage.store).toHaveBeenCalledTimes(1))
     });
         
-    it("sends multiple messages at once with pauses and typing indicators inbetween", async function(this: This) {
+    it("sends multiple messages at once with pauses and typing indicators in between", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
             say `Hi!`,
             ask `How are you?`,
@@ -176,6 +176,21 @@ describe("Dialogue", () => {
         ]);
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete' }]);
     });
+
+        
+    it("ensure total pauses are less then 10 seconds when sending multiple messages at once", async function(this: This) {
+        const [dialogue, storage] = this.build(() => [
+            say `Lorem ipsum dolor sit amet, consectetur adipiscing elit`,
+            say `sed do eiusmod tempor incididunt ut labore et dolore magna aliqua`,
+            say `quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat`,
+            say `Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur`,
+            say `Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum`
+        ], []);
+        const result = await dialogue.consume(this.postback(), this.apiRequest);
+        jasmine.expect(result.filter(m => m.claudiaPause).reduce((t, m) => t + m.claudiaPause, 0)).toBeLessThan(10 * 1000);
+        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete' }]);
+    });
+
 
     it("trims extraneous whitespace in messages", async function(this: This) {
         const [dialogue] = this.build(() => [
@@ -199,6 +214,20 @@ describe("Dialogue", () => {
         );
     });
 
+    it("supports null lines", async function(this: This) {
+        const [dialogue] = this.build(() => [
+            say `Hi!`,
+            null,
+            ask `How are you?`
+        ], []);
+        jasmine.expect(await dialogue.consume(this.postback(), this.apiRequest)).toEqual(
+            jasmine.arrayContaining([
+                jasmine.objectContaining({ text: 'Hi!' }),
+                jasmine.objectContaining({ text: 'How are you?' })
+            ])
+        );
+    });
+    
     it("throws an exception on script with duplicate expect statements", async function(this: This) {
         const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
         jasmine.expect(() => this.build(() => [
@@ -266,7 +295,7 @@ describe("Dialogue", () => {
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: 'I feel'}]);
     });
 
-    it("resumes where it paused on recieving a response", async function(this: This) {
+    it("resumes where it paused on receiving a response", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
             ask `How are you?`, 
             expect `I feel`, {
@@ -276,6 +305,54 @@ describe("Dialogue", () => {
         jasmine.expect(await dialogue.consume(this.message('Amazing'), this.apiRequest)).toEqual([]);
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete'}, { type: 'expect', name: 'I feel'}]);
     });
+
+    it("reevaluates a script after executing a response handler", async function(this: This) {
+        const context = { foo: 'bar' };
+        const [dialogue] = this.build((context: { foo: string }) => [
+            ask `How are you?`, 
+            expect `I feel`, {
+                [onText]: (text: string) => context.foo = 'baz'
+            },
+            say `${context.foo}`
+        ], [{ type: 'expect', name: `I feel` }], undefined, context);
+        jasmine.expect(await dialogue.consume(this.message('Amazing'), this.apiRequest)).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: 'baz' }), 
+        ]));
+    });   
+
+    it("reevaluates a script after executing a keyword handler", async function(this: This) {
+        const context = { foo: 'bar' };
+        const [dialogue] = this.build((context: { foo: string }) => [
+            ask `How are you?`, 
+            '!end',
+            say `${context.foo}`
+        ], [{ type: 'expect', name: `I feel` }], undefined, context);
+        dialogue.setKeywordHandler('Amazing', () => {
+            context.foo = 'baz'
+            return goto `end`
+        })
+        jasmine.expect(await dialogue.consume(this.message('Amazing'), this.apiRequest)).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: 'baz' }), 
+        ]));
+    });    
+    
+    it("reevaluates a script after executing a postback handler", async function(this: This) {
+        const context = { foo: 'bar' };
+        const button = buttons('some buttons', 'Some buttons', {
+            'Amazing': () => {
+                context.foo = 'baz'
+                return goto `end`
+            }
+        })
+        const [dialogue] = this.build((context: { foo: string }) => [
+            button,
+            '!end',
+            say `${context.foo}`
+        ], [{ type: 'complete' }], undefined, context);
+        jasmine.expect(await dialogue.consume(this.postback(button.postbacks![0][0]), this.apiRequest)).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: 'baz' }), 
+        ]));
+    }); 
     
     it("attaches any quick replies defined in response handler to last message", async function(this: This) {
         const [dialogue] = this.build(() => [
@@ -309,7 +386,22 @@ describe("Dialogue", () => {
         ]));
     });
 
-    it("invokes a quick reply's handler on recieving the reply", async function(this: This) {
+    it("supports promises being returned from response handlers" , async function(this: This) {
+        const [dialogue] = this.build(() => [
+            ask `How are you?`, 
+            expect `I feel`, {
+                [defaultAction]: () => Promise.resolve(goto `blocking_label`)
+            },
+            '!blocking_label',
+            say `Promised was resolved`
+
+        ], [{ type: 'expect', name: `I feel` }]);
+        jasmine.expect(await dialogue.consume(this.message('Blah'), this.apiRequest)).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: 'Promised was resolved' })
+        ]));        
+    });
+    
+    it("invokes a quick reply's handler on receiving the reply", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['Amazing'])
         const [dialogue] = this.build(() => [
             ask `How are you?`, 
@@ -320,7 +412,7 @@ describe("Dialogue", () => {
         jasmine.expect(handler.Amazing).toHaveBeenCalled();
     });
 
-    it("invokes a button handler on recieving the postback", async function(this: This) {
+    it("invokes a button handler on receiving the postback", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['Go']);
         const button = buttons('some buttons', 'Some buttons', handler);
         const [dialogue] = this.build(() => [
@@ -330,18 +422,18 @@ describe("Dialogue", () => {
         jasmine.expect(handler.Go).toHaveBeenCalled();
     });
 
-    it("invokes a list bubble's button handler on recieving the postback", async function(this: This) {
+    it("invokes a list bubble's button handler on receiving the postback", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['Go']);
-        const mylist = list('my list', 'compact', [        
+        const myList = list('my list', 'compact', [        
             ['Title', 'Subtitle', 'image.jpeg', {
                 ['Go']: () => handler.Go()
             }],
             ['Title', 'Subtitle', 'image.jpeg', {}]
         ], handler);
         const [dialogue] = this.build(() => [
-            mylist
+            myList
         ], []);
-        await dialogue.consume(this.postback(mylist.postbacks![0][0]), this.apiRequest);
+        await dialogue.consume(this.postback(myList.postbacks![0][0]), this.apiRequest);
         jasmine.expect(handler.Go).toHaveBeenCalled();
     });
 
@@ -406,7 +498,7 @@ describe("Dialogue", () => {
         await dialogue.consume(this.message('Amazing'), this.apiRequest)
     });
     
-    it("invokes the location handler on recieving a location quick reply", async function(this: This) {
+    it("invokes the location handler on receiving a location quick reply", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['location'])
         const [dialogue] = this.build(() => [
             ask `Where are you?`,
@@ -418,7 +510,7 @@ describe("Dialogue", () => {
         jasmine.expect(handler.location).toHaveBeenCalledWith(50, 1, 'Mock', "localhost");
     });
 
-    it("invokes the onText handler on recieving a text response", async function(this: This) {
+    it("invokes the onText handler on receiving a text response", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['onText'])
         const [dialogue] = this.build(() => [
             ask `How are you?`,
@@ -430,7 +522,7 @@ describe("Dialogue", () => {
         jasmine.expect(handler.onText).toHaveBeenCalledWith('Amazing');
     });
 
-    it("invokes the onLocation handler on recieving a location response", async function(this: This) {
+    it("invokes the onLocation handler on receiving a location response", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['onLocation'])
         const [dialogue] = this.build(() => [
             ask `Where are you?`,
@@ -442,7 +534,7 @@ describe("Dialogue", () => {
         jasmine.expect(handler.onLocation).toHaveBeenCalledWith(50, 1, 'Mock', "localhost");
     });
 
-    it("invokes the onImage handler on recieving an image response", async function(this: This) {
+    it("invokes the onImage handler on receiving an image response", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['onImage'])
         const [dialogue] = this.build(() => [
             ask `What do you look like?`,
@@ -454,7 +546,7 @@ describe("Dialogue", () => {
         jasmine.expect(handler.onImage).toHaveBeenCalledWith("photo.jpg");
     });
 
-    it("invokes the onVideo handler on recieving an video response", async function(this: This) {
+    it("invokes the onVideo handler on receiving an video response", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['onVideo'])
         const [dialogue] = this.build(() => [
             ask `What do you move like?`,
@@ -466,7 +558,7 @@ describe("Dialogue", () => {
         jasmine.expect(handler.onVideo).toHaveBeenCalledWith("video.mpg");
     });
 
-    it("invokes the onAudio handler on recieving an audio response", async function(this: This) {
+    it("invokes the onAudio handler on receiving an audio response", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['onAudio'])
         const [dialogue] = this.build(() => [
             ask `What do you sound like?`,
@@ -478,7 +570,7 @@ describe("Dialogue", () => {
         jasmine.expect(handler.onAudio).toHaveBeenCalledWith("recording.wav");
     });
 
-    it("invokes the onFile handler on recieving an file response", async function(this: This) {
+    it("invokes the onFile handler on receiving an file response", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['onFile'])
         const [dialogue] = this.build(() => [
             ask `What do you write like?`,
@@ -490,6 +582,43 @@ describe("Dialogue", () => {
         jasmine.expect(handler.onFile).toHaveBeenCalledWith("word.doc");
     });
 
+    it("invokes the defaultAction handler if no other more suitable handler defined" , async function(this: This) {
+        const handler = jasmine.createSpyObj('response', ['defaultAction'])
+        const [dialogue] = this.build(() => [
+            ask `How are you?`, 
+            expect `I feel`, {
+                [defaultAction]: () => handler.defaultAction(),
+                [onAudio]: () => null
+            }
+        ], [{ type: 'expect', name: `I feel` }]);
+        await dialogue.consume(this.message('Blah'), this.apiRequest);
+        jasmine.expect(handler.defaultAction).toHaveBeenCalled();      
+    });
+    
+    it("invokes the defaultAction handler if no other more suitable handler defined" , async function(this: This) {
+        const handler = jasmine.createSpyObj('response', ['defaultAction'])
+        const [dialogue] = this.build(() => [
+            ask `How are you?`, 
+            expect `I feel`, {
+                [defaultAction]: () => handler.defaultAction(),
+                [onAudio]: () => null
+            }
+        ], [{ type: 'expect', name: `I feel` }]);
+        await dialogue.consume(this.message('Blah'), this.apiRequest);
+        jasmine.expect(handler.defaultAction).toHaveBeenCalled();      
+    });
+    
+    it("prefers any suitable handler over the defaultAction handler", async function(this: This) {
+        const [dialogue] = this.build(() => [
+            ask `How are you?`, 
+            expect `I feel`, {
+                [onText]: () => null,
+                [defaultAction]: () => fail('Should not be called')
+            },
+        ], [{ type: 'expect', name: `I feel` }]);
+        await dialogue.consume(this.message('Amazing'), this.apiRequest)
+    });
+    
     it("handles unexpected response types by repeating only the ask statements", async function(this: This) {
         const [dialogue, storage] = this.build(() => [
             ask `What do you sound like?`,
@@ -498,6 +627,7 @@ describe("Dialogue", () => {
             },
             ask `What do you write like?`,
             say `This won't be repeated`,
+            new fbTemplate.Text('Or this'),
             ask `Send us a word document`,
             expect `I write like`, {
                 [onFile]: (url: string) => null
@@ -516,7 +646,42 @@ describe("Dialogue", () => {
         ]));
     });
 
-    it("falls through a label not prefixed with an explanation mark", async function(this: This) {
+    it("supports the throwing of UnexpectedInputError from response handlers", async function(this: This) {
+        const [dialogue, storage] = this.build(() => [
+            ask `What do you sound like?`,
+            expect `I sound like`, {
+                [onAudio]: (url: string) => { throw new UnexpectedInputError('Your voice is too high pitched'); }
+            },
+            ask `How are you?`
+        ], [{ type: 'expect', name: `I sound like` }]);
+        const result = await dialogue.consume(this.multimedia("audio", "recording.wav"), this.apiRequest);
+        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: `I sound like` }]);
+        jasmine.expect(result).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: `Your voice is too high pitched` }),
+            jasmine.objectContaining({ text: `What do you sound like?` }),
+        ]));
+        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: `How are you?` }),
+        ]));
+    });
+
+    it("does not repeat the question when repeatQuestion arg to UnexpectedInputError constructor is false", async function(this: This) {
+        const [dialogue] = this.build(() => [
+            ask `What do you sound like?`,
+            expect `I sound like`, {
+                [onAudio]: (url: string) => { throw new UnexpectedInputError('Your voice is too high pitched', false); }
+            }
+        ], [{ type: 'expect', name: `I sound like` }]);
+        const result = await dialogue.consume(this.multimedia("audio", "recording.wav"), this.apiRequest);
+        jasmine.expect(result).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: `Your voice is too high pitched` }),
+        ]));
+        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: `What do you sound like?` }),
+        ]));
+    });
+
+    it("falls through a label not prefixed with an exclamation mark", async function(this: This) {
         const [dialogue] = this.build(() => [
             say `Hi!`,
             'label',
@@ -532,7 +697,7 @@ describe("Dialogue", () => {
         ]));
     });
 
-    it("breaks on hitting a label prefixed with an explanation mark", async function(this: This) {
+    it("breaks on hitting a label prefixed with an exclamation mark", async function(this: This) {
         const [dialogue] = this.build(() => [
             say `Hi!`,
             '!label',
@@ -571,7 +736,7 @@ describe("Dialogue", () => {
         ]));
     });
 
-    it("respects gotos retuned from response handlers", async function(this: This) {
+    it("respects gotos returned from response handlers", async function(this: This) {
         const [dialogue] = this.build(() => [
             ask `How are you?`,
             expect `I feel`, {
@@ -579,7 +744,7 @@ describe("Dialogue", () => {
             },
             say `Don't say this`,
             'label',
-            say `Goodbye`,
+            say `Goodbye`
         ], [{ type: 'expect', name: `I feel` }]);
         const result = await dialogue.consume(this.message('Amazing'), this.apiRequest);
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
@@ -654,6 +819,88 @@ describe("Dialogue", () => {
         jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `But why?` })
         ]));
+    });
+
+    it("supports expects returned from response handlers to delegate handling", async function(this: This) {
+        const handler = jasmine.createSpyObj('response', ['onText'])
+        const [dialogue] = this.build(() => [
+            ask `How are you?`,
+            expect `I feel`, {
+                'Amazing': () => expect `I feel that way because`
+            },
+            ask `But why?`, 
+            expect `I feel that way because`, {
+                [onText]: (text: string) => handler.onText(text)
+            }
+        ], [{ type: 'expect', name: `I feel` }]);
+        await dialogue.consume(this.message('Amazing'), this.apiRequest);
+        jasmine.expect(handler.onText).toHaveBeenCalledWith('Amazing');    
+    });
+
+    it("aborts an expect returned from response handler that causes an endless loop", async function(this: This) {
+        const [dialogue, storage] = this.build(() => [
+            ask `How are you?`,
+            expect `I feel`, {
+                'Amazing': () => expect `I feel`
+            },
+        ], [{ type: 'expect', name: `I feel` }]);
+        await dialogue.consume(this.message('Amazing'), this.apiRequest)
+            .then(() => fail('Did not throw'))
+            .catch(e => {
+                jasmine.expect(e).toEqual(jasmine.stringMatching('Endless loop detected'));
+                jasmine.expect(storage.store).not.toHaveBeenCalled();
+            });    
+    });
+
+    it("ignores return values from handlers if not gotos or expects", async function(this: This) {
+        const [dialogue] = this.build(() => [
+            ask `How are you?`,
+            expect `I feel`, {
+                'Amazing': () => new Object()
+            },
+            say `Goodbye`
+        ], [{ type: 'expect', name: `I feel` }]);
+        const result = await dialogue.consume(this.message('Amazing'), this.apiRequest);
+        jasmine.expect(result).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: 'Goodbye' }), 
+        ]));
+    });
+    
+    it("calls a keyword handler when message is received that matches insensitive of case", async function(this: This) {
+        const [dialogue] = this.build(() => [
+            say `Yo`,
+        ], []);
+        const handler = jasmine.createSpy('handler')
+        dialogue.setKeywordHandler('word', handler)
+        await dialogue.consume(this.message('Word'), this.apiRequest)
+        jasmine.expect(handler).toHaveBeenCalled();
+    });    
+
+    it("calls a keyword handler matching a postback payload if no postback handler found", async function(this: This) {
+        const [dialogue] = this.build(() => [
+            ask `How are you?`,
+            expect `I feel`, {
+                'Amazing': null
+            },
+        ], [{ type: 'expect', name: `I feel` }]);
+        const handler = jasmine.createSpy('handler')
+        dialogue.setKeywordHandler('postback_action', handler)
+        await dialogue.consume(this.postback('postback_action'), this.apiRequest)
+        jasmine.expect(handler).toHaveBeenCalled();
+    });
+
+    it("prefers a matching keyword handler over the current response handler", async function(this: This) {
+        const responseHandler = jasmine.createSpyObj('storage', ['Amazing'])
+        const [dialogue] = this.build(() => [
+            ask `How are you?`,
+            expect `I feel`, 
+            responseHandler
+        ], [{ type: 'expect', name: `I feel` }]);
+        const handler = jasmine.createSpy('handler')
+        dialogue.setKeywordHandler('Amazing', handler)
+        await dialogue.consume(this.message('Amazing'), this.apiRequest)
+        jasmine.expect(responseHandler.Amazing).not.toHaveBeenCalled();
+        jasmine.expect(handler).toHaveBeenCalled();
     });
 
     it("resets the dialogue when user sends a restart keyword", async function(this: This) {
@@ -748,7 +995,7 @@ describe("Dialogue", () => {
                 'Amazing': null
             },
         ], []);
-        dialogue.setKeywordHandler('starft over', 'restart')
+        dialogue.setKeywordHandler('start over', 'restart')
         dialogue.setKeywordHandler('back', 'undo')
         jasmine.expect(await dialogue.consume(this.message('start over'), this.apiRequest)).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `How are you?` })

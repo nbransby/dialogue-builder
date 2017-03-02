@@ -21,14 +21,15 @@ export const onFile = Symbol("a file")
 
 export type ResponseHandler = any
 // export interface ResponseHandler {
-//     readonly [quickReply: string]: () => Goto | Expect | void
-//     readonly [location]?(lat: number, long: number, title?: string, url?: string): Goto | Expect | void
-//     readonly [onText]?(text: string): Goto | Expect | void;
-//     readonly [onLocation]?(lat: number, long: number, title?: string, url?: string): Goto | Expect | void;
+//     readonly [quickReply: string]: () => Goto | Expect | void | Promise<Goto | Expect | void>
+//     readonly [location]?(lat: number, long: number, title?: string, url?: string): Goto | Expect | void | Promise<Goto | Expect | void>
+//     readonly [onText]?(text: string): Goto | Expect | void | Promise<Goto | Expect | void>
+//     readonly [onLocation]?(lat: number, long: number, title?: string, url?: string): Goto | Expect | void | Promise<Goto | Expect | void>
 //     readonly [onImage]?(url: string): Goto | Expect | void;
 // }
 
 const ordinals = ['first', 'second', 'third', 'forth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth']
+
 
 export class UnexpectedInputError {
     constructor(public message: string, public repeatQuestion: boolean = true) {}
@@ -260,7 +261,7 @@ export class Dialogue<T> {
         return output.length == 0 ? [] : processor.insertPauses(output).map(e => e.get());
     }     
 
-    async consume(message: Message, apiRequest: Request): Promise<string[]> {
+    async consume(message: Message, apiRequest: Request): Promise<any[]> {
         return this.process(message, {
             consumeKeyword(this: Processor, keyword) {
                 return this.consumePostback(`keyword '${keyword.toLowerCase()}'`);
