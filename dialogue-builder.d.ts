@@ -66,6 +66,13 @@ export declare class Dialogue<T> {
     private process(message, processor);
     consume(message: Message, apiRequest: Request): Promise<any[]>;
 }
+export declare namespace mock {
+    const apiRequest: Request;
+    function message(text: string): Message;
+    function postback(payload?: string): Message;
+    function location(lat: number, long: number, title?: string, url?: string): Message;
+    function multimedia(type: 'image' | 'audio' | 'video' | 'file' | 'location', url: string): Message;
+}
 declare module "claudia-bot-builder" {
     namespace fbTemplate {
         interface BaseTemplate {

@@ -392,6 +392,117 @@ class State {
     }
 }
 
+export namespace mock {
+
+    export const apiRequest: Request = {
+        queryString: {},
+        env: {},
+        headers: {},
+        normalizedHeaders: {},
+        lambdaContext: { 
+            callbackWaitsForEmptyEventLoop: false,
+            getRemainingTimeInMillis: () => 15
+        }            
+    }
+    
+    export function message(text: string): Message { 
+        return {
+            postback: false, 
+            text: text, 
+            sender: "user", 
+            type: 'facebook', 
+            originalRequest: { 
+                sender: { id: "user" }, 
+                recipient: { id: "bot" }, 
+                timestamp: 0, 
+                message: { 
+                    mid: "1", 
+                    seq: 1, 
+                    text: text
+                }
+            }
+        }
+    }
+        
+    export function postback(payload: string = 'USER_DEFINED_PAYLOAD'): Message {
+        return {
+            postback: true, 
+            text: '', 
+            sender: "user", 
+            type: 'facebook', 
+            originalRequest: { 
+                sender: { id: "user" }, 
+                recipient: { id: "bot" }, 
+                timestamp: 0, 
+                message: { 
+                    mid: "1", 
+                    seq: 1, 
+                    text: "" 
+                },
+                postback: {
+                    payload: payload
+                }
+            }
+        };
+    }
+
+    export function location(lat: number, long: number, title?: string, url?: string): Message { 
+        return {
+            postback: false, 
+            text: "", 
+            sender: "user", 
+            type: 'facebook', 
+            originalRequest: { 
+                sender: { id: "user" }, 
+                recipient: { id: "bot" }, 
+                timestamp: 0, 
+                message: { 
+                    mid: "1", 
+                    seq: 1, 
+                    text: "",
+                    attachments: [{
+                        type: "location",
+                        payload: {
+                            title: title,
+                            url: url,
+                            coordinates: {
+                                lat: lat,
+                                long: long
+                            }
+                        }
+                    }]
+                } 
+            }
+        }
+    }
+
+    export function multimedia(type: 'image'|'audio'|'video'|'file'|'location', url: string): Message { 
+        return {
+            postback: false, 
+            text: "", 
+            sender: "user", 
+            type: 'facebook', 
+            originalRequest: { 
+                sender: { id: "user" }, 
+                recipient: { id: "bot" }, 
+                timestamp: 0, 
+                message: { 
+                    mid: "1", 
+                    seq: 1, 
+                    text: "",
+                    attachments: [{
+                        type: type,
+                        payload: {
+                            url: url,
+                        }
+                    }]
+
+                } 
+            }
+        }
+    }    
+}
+
 declare module "claudia-bot-builder" {
     namespace fbTemplate {
         interface BaseTemplate {
