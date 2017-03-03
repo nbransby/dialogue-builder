@@ -1,7 +1,7 @@
 {
   "name": "dialogue-builder",
   "version": "0.2.0",
-  "description": "Beautifuly readable static dialogue - great for simple bots or an onboarding flow",
+  "description": "Beautifully readable dialogue for facebook messenger bots",
   "main": "dialogue-builder.js",
   "types": "index.d.ts",
   "engines": {

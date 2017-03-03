@@ -199,10 +199,11 @@ declare module "dialogue-builder" {
     export function video(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
     export function image(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
     export function file(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
-    export type ButtonHandler = {
+    export  type ButtonHandler = {
         [title: string]: () => Goto | void;
     };
     export type Bubble = [string, string, string, ButtonHandler];
+    export function buttons(id: string, text: string, handler: ButtonHandler): Button;
     export function list(id: string, type: 'compact' | 'large', bubbles: Bubble[], handler: ButtonHandler): List;
     export function dialogue<T>(name: string, script: (...context: T[]) => Script): DialogueBuilder<T>;
     export interface DialogueBuilder<T> {
@@ -220,6 +221,7 @@ declare module "dialogue-builder" {
         private outputType;
         baseUrl: string;
         constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]);
+        execute(directive: Directive): void;
         setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void;
         private process(dialogue, processor);
         private static handle<T>(handler, invoke, ...keys);

@@ -62,6 +62,7 @@ export declare class Dialogue<T> {
     private outputFilter;
     baseUrl: string;
     constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]);
+    execute(directive: Directive): Promise<void>;
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void;
     private process(message, processor);
     consume(message: Message, apiRequest: Request): Promise<any[]>;

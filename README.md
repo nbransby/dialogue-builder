@@ -8,7 +8,7 @@
 [coverage-image]:https://codecov.io/gh/nbransby/dialogue-builder/branch/master/graph/badge.svg
 [coverage-url]:https://codecov.io/gh/nbransby/dialogue-builder
 
-The goal of this library is to enable you to write a static bot dialogue in JavaScript or TypeScript. It utilises template literals to enable you to write dialogue in a highly readable way making it easier to review the dialogue at a glance, it currently has been designed to work with Facebook Messenger bots only. See [dialogue-builder-example](https://github.com/nbransby/dialogue-builder-example) for a working example.
+The goal of this library is to enable you to write bot dialogue in JavaScript or TypeScript. It utilizes template literals to enable you to write dialogue in a highly readable way, making it easier to review the dialogue at a glance, it currently has been designed to work with Facebook Messenger bots only. See [dialogue-builder-example](https://github.com/nbransby/dialogue-builder-example) for a working example.
 
 ```javascript
 exports.default = dialogue('Onboarding ', (name) => [ 
@@ -64,19 +64,19 @@ const { Dialogue } = require("dialogue-builder");
 
 const onboarding = require('onboarding');
 
-module.exports = botBuilder(function (message) {
+module.exports = botBuilder(function (message, apiRequest) {
     const dialogue = new Dialogue(onboarding, {
         store(state: Object) => console.log('Need to persist this somewhere')
         retrieve() => return Promise.resolve(new Object())
     }, 'Dave');
     dialogue.setKeywordHandler('back', 'undo');
-    return dialogue.consume(message, () => console.log('Dialogue complete'));
+    return dialogue.consume(message, apiRequest);
 });
 ````
 
 Dialogue builder is built on top of the excellent [bot-builder](https://github.com/claudiajs/claudia-bot-builder) by [claudia.js](https://claudiajs.com/) and the code above is the entry point for a bot builder project. 
 
-Each invocation of the function above is caused by an incoming message from the user. The `consume` method called above would continue the dialogue where it left off, calling any [responses handlers](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-symbols) for the incoming message and returning the next set of outgoing messages to send. 
+Each invocation of the function above is caused by an incoming message from the user. The `consume` method called above would continue the dialogue where it left off, calling any [responses handlers](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-defaultaction-symbols) for the incoming message and returning the next set of outgoing messages. 
 
 Except, in the example above, the bot would simply repeat the beginning of the dialogue each time the user sent a message because the storage handler (the `store` and `retrieve` methods) is not persisting the internal dialogue state (which is a JSON object). You would normally store this state under your user record in the persistence storage mechanism on your choosing. See [dialogue-builder-example](https://github.com/nbransby/dialogue-builder-example) for an example on how to implement this using DynamoDB.
 
@@ -84,70 +84,125 @@ Except, in the example above, the bot would simply repeat the beginning of the d
 
 The `dialogue-builder` module exports the following interface:
 * [`dialogue` function](#dialogue-function)
-* [`say`, `ask`, `expect`, `goto` template literal tag functions](#say-ask-expect-goto-tags-functions)
-* [`location`, `onText`, `onLocation`, `onImage`, `onAudio`, `onVideo`, `onFile` symbols](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-symbols)
+* [`say`, `ask`, `audio`, `video`, `image`, `file`, `expect`, `goto` template literal tag functions](#say-ask-audio-video-image-file-expect-goto-template-literal-tag-functions)
+* [`buttons`, `list` functions](#buttons-list-functions)
+* [`onText`, `location`, `onLocation`, `onImage`, `onAudio`, `onVideo`, `onFile`, `defaultAction` symbols](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-defaultaction-symbols)
 * [`UnexpectedInputError` class](#unexpectedinputerror-class)
 * [`Dialogue` class](#dialogue-class)
+* [`mock` namespace](#mock-namespace)
 
 ### `dialogue` function
 ````typescript
-dialogue(name: string, script: (...context: any) => Array<Label | Expect | Goto | Say | Ask | ResponseHandler>): DialogueBuilder`
+dialogue(name: string, script: (...context: any) => Array<BaseTemplate | Label | Expect | Goto | ResponseHandler>): DialogueBuilder`
 ````
-This function is used to define your script, the first arg is the name of your dialogue (not shown to the user) and the second is your script function which should return an array (the lines of your script). This function is passed any custom args you passed to the [Dialogue contructor](#dialogue-class).
+This function is used to define your script, the first arg is the name of your dialogue (not shown to the user) and the second is your script function which should return an array (the lines of your script). This function is passed any custom args you passed to the [Dialogue constructor](#dialogue-class).
 
-### `say`, `ask`, `expect`, `goto` tags functions
+### `say`, `ask`, `audio`, `video`, `image`, `file`, `expect`, `goto` template literal tag functions
 
 The array passed to the dialogue function form the lines of your script, an element in this array has to be one of:
 * `say` _string_: Your bot will simply repeat the string passed in 
 * `ask` _string_: Identical to `say` except only `ask` statements are repeated on [undo](#undo) or an unhandled response
-* `expect` _string_: This statement marks a break in the dialogue to wait for a user response. The _string_ you pass is the response you expect from the user, it's used as a key when persisting the state of the conversation and so *must* be a string unique amongst all expect statements. An expect statement must always be immediately followed by a [`ResponseHandler`](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-symbols)
-* `goto` _string_: A goto statement will cause the dialogue to jump to another location in the script. The string you pass in specifies the label to jump to. `goto` statements can also be returned from a [`ResponseHandler's`](#location-onText-onLocation-onImage-onAudio-onVideo-onFile-symbols) methods
-* _string_: Any untagged strings in the array are treated as labels which serve as the destination of goto statements.
+* `audio` _string_: Send an audio file, the string passed in should be a url
+* `video` _string_: Send a video file, the string passed in should be a url
+* `image` _string_: Send an image file, the string passed in should be a url
+* `file` _string_: Send a file, the string passed in should be a url
+* `expect` _string_: This statement marks a break in the dialogue to wait for a user response. The _string_ you pass is the response you expect from the user, it's used as a key when persisting the state of the conversation and so *must* be a string unique amongst all expect statements. An expect statement must always be immediately followed by a [`ResponseHandler`](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-defaultaction-symbols)
+* `goto` _string_: A goto statement will cause the dialogue to jump to another location in the script. The string you pass in specifies the label to jump to. `goto` statements can also be returned from a [`ResponseHandler's`](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-defaultaction-symbols) methods
+* _string_: Any untagged strings in the array are treated as labels which serve as the destination of goto statements. When gathering the next set of outgoing messages, the dialogue will fall through labels by default. You can override this behavior by prefixing your label with an exclamation mark (!) - this causes the dialogue to break at the label. Once dialogue has stopped at a label only a goto statement will restart it (use this feature when you want to wait for postback)
+* `fbTemplate.BaseTemplate`: You can embed any facebook message type supported by bot builder directly in your script, see [Facebook Template Builder](https://github.com/claudiajs/claudia-bot-builder/blob/master/docs/FB_TEMPLATE_MESSAGE_BUILDER.md) for more info
 
-### `location`, `onText`, `onLocation`, `onImage`, `onAudio`, `onVideo`, `onFile` symbols
+### `buttons`, `list` functions
+````typescript
+type ButtonHandler = { [title: string]: () => Goto | void }
+type Bubble = [string, string, string, ButtonHandler]
+
+function buttons(id: string, text: string, handler: ButtonHandler): Button
+function list(id: string, type: 'compact' | 'large', bubbles: Bubble[], handler: ButtonHandler): List
+````
+
+The `buttons` function allows you to send a [Button Template](https://developers.facebook.com/docs/messenger-platform/send-api-reference/button-template) in your script. The first arg *must* be a string unique amongst all templates defined in your script, the second is the title to display to the user,and the third is your button handler object which defines the buttons names and handler functions in the same way as quick replies in a [`ResponseHandler`](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-defaultaction-symbols), it returns a [Button](https://github.com/claudiajs/claudia-bot-builder/blob/master/docs/FB_TEMPLATE_MESSAGE_BUILDER.md)
+
+The `list` function allows you to send a [List Template](https://developers.facebook.com/docs/messenger-platform/send-api-reference/list-template) in your script. The first arg *must* be a string unique amongst all templates defined in your script, the second is the list type, the third is an array of bubbles in your list, and the forth is a button handler object which defines the button names and handler function in the same way as quick replies in a [`ResponseHandler`](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-defaultaction-symbols), it returns a [List](https://github.com/claudiajs/claudia-bot-builder/blob/master/docs/FB_TEMPLATE_MESSAGE_BUILDER.md)
+
+
+### `location`, `onText`, `onLocation`, `onImage`, `onAudio`, `onVideo`, `onFile`, `defaultAction` symbols
 
 A `ResponseHandler` is an object who's methods are called on receiving a message from the user to handle the response to the immediately preceding `expect` statement. The supported methods are:
-* _string_`: () => Goto | void`: A string property causes a quick reply to be attached to the last outgoing message, the function is called on the user selecting the reply
-* `[location]: (lat: number, long: number, title?: string, url?: string) => Goto | void`: The `location` symbol property causes a location quick reply to be attached to the last outgoing message, the function is called on the user selecting the reply
-* `[onText]: (text: string) => Goto | void`: The `onText` symbol property is called when the user types a text response that doesn't match any of the quick replies
-* `[onLocation]: (lat: number, long: number, title?: string, url?: string) => Goto | void`: The `onLocation` symbol property is called when the user types a sends a location, you cannot define both `location` and `onLocation` properties on the same response handler
-* `[onImage]: (url: string) => Goto | void`: The `onImage` symbol property is called when the user sends an image
-* `[onAudio]: (url: string) => Goto | void`: The `onAudio` symbol property is called when the user sends an audio recording
-* `[onVideo]: (url: string) => Goto | void`: The `onVideo` symbol property is called when the user sends a video
-* `[onFile]: (url: string) => Goto | void`: The `onFile` symbol property is called when the user sends a file
+* _string_`(text?: string)`: A string property causes a quick reply to be attached to the last outgoing message, the function is called on the user selecting the reply, the text passed in will always be the same as the function name
+* `[location](lat: number, long: number, title?: string, url?: string)`: The `location` symbol property causes a location quick reply to be attached to the last outgoing message, the function is called on the user selecting the reply
+* `[onText](text: string)`: The `onText` symbol property is called when the user types a text response that doesn't match any of the quick replies
+* `[onLocation](lat: number, long: number, title?: string, url?: string)`: The `onLocation` symbol property is called when the user types a sends a location, you cannot define both `location` and `onLocation` properties on the same response handler
+* `[onImage](url: string)`: The `onImage` symbol property is called when the user sends an image
+* `[onAudio](url: string)`: The `onAudio` symbol property is called when the user sends an audio recording
+* `[onVideo](url: string)`: The `onVideo` symbol property is called when the user sends a video
+* `[onFile](url: string)`: The `onFile` symbol property is called when the user sends a file
+* `[defaultAction]()`: The `defaultAction` symbol property is called when for any action if no other property matches the user's response so can be used as a catch all. It is also used to specify the default action on [buttons and lists](#buttons-list-functions)
 
-Returning a [goto statement](#say-ask-expect-goto-tags-functions) from a `ResponseHandler` method will cause the dialogue to jump to the specified label
+All response handler methods support returning one of `Goto | Expect | void`, you can also return a promise resolving to one of the same set of types: `Promise<Goto | Expect | void>`
+
+Returning a [goto statement](#say-ask-audio-video-image-file-expect-goto-template-literal-tag-functions) from a `ResponseHandler` method will cause the dialogue to jump to the specified label
+
+Returning a [expect statement](#say-ask-audio-video-image-file-expect-goto-template-literal-tag-functions) from a `ResponseHandler` method will delegate the handling of the response to the relevant handler function of the response handler defined for the expect statement specified
 
 ### `UnexpectedInputError` class
+````typescript
+class UnexpectedInputError {
+    constructor(message: string, repeatQuestion?: boolean)
+}
+````
+When a [`ResponseHandler`](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-defaultaction-symbols) recieves a message from the user for which is does not contain a handler method for an instance of `UnexpectedInputError` is thrown, this will cause the question to be repeated. You can invoke this behaviour in a handled response by throwing this error from the handler method. 
 
-When a [`ResponseHandler`](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-symbols) recieves a message from the user for which is does not contain a handler method for an instance of `UnexpectedInputError` is thrown, this will cause the question to be repeated. You can invoke this behaviour in a handled response by throwing this error from the handler method
+The string you pass to the constructor will be sent to the user followed by repeating the question (the ask statements). If you don't want to repeat the question, pass `true` as the second constructor arg
 
 ### `Dialogue` class
 ````typescript
 class Dialogue {
-    constructor(builder: DialogueBuilder, storage: Storage, ...context: any);
-    setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void;
-    readonly isComplete: boolean;
-    consume(message: Message): Promise<string[]>;
+    constructor(builder: DialogueBuilder, storage: Storage, ...context: any)
+    baseUrl: string
+    execute(directive: Goto | Expect)
+    consume(message: Message, apiRequest: Request): Promise<any[]>
+    setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void
 }
 ````
 The `Dialogue` class constructor has two required args, the first is the dialogue (the return value from the [`dialogue` function](#dialogue-function) and the second is the storage handler, you need to pass an object conforming to the following interface to store the dialogue state, typically under your user record in a persistence storage mechanism on your choosing:
 ````typescript
 interface Storage {
-    store(state: Object): Promise<void>;
-    retrieve(): Promise<Object>;
+    store(state: Object): Promise<void>
+    retrieve(): Promise<Object>
 }
 ````
-Any additional args passed to the contructor are passed to the [`dialogue` function](#dialogue-function) this would typically be used to pass through the user's details to customise the dialogue plus any object needed in the [`ResponseHandlers`](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-symbols) to act on user responses.
+Any additional args passed to the constructor are passed to the [`dialogue` function](#dialogue-function) this would typically be used to pass through the user's details to customize the dialogue plus any object needed in the [`ResponseHandlers`](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-defaultaction-symbols) to act on user responses.
 
-Call the `setKeywordHandler` method to create a keyword which will trigger the callback passed in whenever the user sends any of the keywords passed as the first arg, at any point in the conversation. The callback can return a [goto statement](#say-ask-expect-goto-tags-functions) to cause the dialogue to jump to the specified label. 
+Setting the `baseUrl` property allows you to pass uris into functions that would normally expect a full url, such as [`audio`, `video`, `image`, `file` template literal tag functions](#say-ask-audio-video-image-file-expect-goto-template-literal-tag-functions) and the [`buttons`, `list` functions](#buttons-list-functions)
+
+Call the `execute` method to jump to another location in the script specified by a [`goto` or `expect` statement](#say-ask-audio-video-image-file-expect-goto-template-literal-tag-functions). This is useful for writing unit tests in combination with the [`mock` namespace](#mock-namespace)
+
+Call the `consume` method to process the input from the user, you need pass in the message and apiRequest from your bot builder handler method, you can return the result of this method directly from your bot builder handler method.
+
+Call the `setKeywordHandler` method to create a keyword which will trigger the callback passed in whenever the user sends any of the keywords passed as the first arg, at any point in the conversation. The callback can return a [goto statement](#say-ask-audio-video-image-file-expect-goto-template-literal-tag-functions) to cause the dialogue to jump to the specified label. 
 
 Two built-in keyword handlers exist, which you can assign keywords to by replacing the callback with either `undo` or `restart`
 
 #### `undo`
 The undo keyword handler will repeat the last question asked in the dialogue, allowing the user to correct a mistake
 ####  `restart`
-The restart keyword handler will reset the dialogue to the beginning and is useful to enable during development
+The restart keyword handler will reset the dialogue to the beginning and is useful to enable during development: *TIP:* Set your restart keyword to match your [Get Started button call to action payload](https://developers.facebook.com/docs/messenger-platform/thread-settings/get-started-button) so when users delete the conversation and initiate a new one your dialogue will begin from the start
+
+### `mock` namespace
+````typescript
+export namespace mock {
+    const apiRequest: Request
+    function message(text: string): Message
+    function postback(payload?: string): Message
+    function location(lat: number, long: number, title?: string, url?: string): Message
+    function multimedia(type: 'image' | 'audio' | 'video' | 'file' | 'location', url: string): Message
+}
+````
+The constants and functions defined in the `mock` namespace allow you to easily mock input when calling the [`consume` method of the `Dialogue` class](#dialogue-class), for example:
+
+````typescript
+dialogue.consume(mock.message('Hi'), mock.apiRequest)
+````
 
 ## Behavioral specifications
 
@@ -156,7 +211,7 @@ The restart keyword handler will reset the dialogue to the beginning and is usef
 * [it throws an exception on script only containing labels](/tests.ts#L114)
 * [it sends the first and only message in a single message dialogue](/tests.ts#L128)
 * [it throws empty array on consume when complete](/tests.ts#L138)
-* [it sends muliple say or ask messages at once](/tests.ts#L156)
+* [it sends multiple say or ask messages at once](/tests.ts#L156)
 * [it trims extranous whitespace](/tests.ts#L170)
 * [it throws an exception on script with duplicate expect statements](/tests.ts#L178)
 * [it throws an exception on expect statement not followed by a response handler](/tests.ts#L194)

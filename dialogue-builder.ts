@@ -197,6 +197,11 @@ export class Dialogue<T> {
         this.state = new State(storage, expects, labels);
     }
 
+    async execute(directive: Directive) {
+        await this.state.retrieveState();
+        this.state.jump(directive, `Dialogue.execute(${directive.constructor.name.toLowerCase()} \`${directive.toString()}\`)`)
+    }
+
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)) {
         const keys = keywords instanceof Array ? keywords : [keywords];
         const undo = () => { 
@@ -357,7 +362,7 @@ class State {
         }
     }
 
-    jump(location: Goto|Expect, lineOrIdentifier: number|string): number {
+    jump(location: Directive, lineOrIdentifier: number|string): number {
         assert(this.state);
         if(++this.jumpCount > 10) throw new Error(`Endless loop detected ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: ${location.constructor.name.toLowerCase()} \`${location.toString()}\``);
         if(location instanceof Expect) {

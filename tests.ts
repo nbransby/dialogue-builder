@@ -649,6 +649,41 @@ describe("Dialogue", () => {
         ]));
     });
 
+    it("respects gotos executed on the dialogue instance", async function(this: This) {
+        const [dialogue] = this.build(() => [
+            say `Don't say this`,
+            'label',
+            ask `How are you?`,
+        ], []);
+        dialogue.execute(goto `label`);
+        const result = await dialogue.consume(mock.postback(), mock.apiRequest);
+        jasmine.expect(result).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: `How are you?` })
+        ]));
+        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: `Don't say this` })
+        ]));
+    });
+
+    it("jumps to an expect executed on the dialogue instance", async function(this: This) {
+        const handler = jasmine.createSpyObj('handler', ['Amazing']);
+        const [dialogue] = this.build(() => [
+            say `Don't say this`,
+            expect `I feel`, 
+            handler,
+            say `Goodbye`
+        ], []);
+        dialogue.execute(expect `I feel`);
+        const result = await dialogue.consume(mock.message('Amazing'), mock.apiRequest);
+        jasmine.expect(handler.Amazing).toHaveBeenCalled();
+        jasmine.expect(result).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: 'Goodbye' }), 
+        ]));
+        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: `Don't say this` })
+        ]));
+    });
+
     it("respects gotos returned from response handlers", async function(this: This) {
         const [dialogue] = this.build(() => [
             ask `How are you?`,
