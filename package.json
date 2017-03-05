@@ -8,7 +8,7 @@
     "node": ">=4.3"
   },
   "dependencies": {
-    "claudia-bot-builder": "github:nbransby/claudia-bot-builder"
+    "claudia-bot-builder": "^2.14.1"
   },
   "devDependencies": {
     "@types/jasmine": "^2.5.40",
