@@ -1,5 +1,5 @@
 
-import { Dialogue, dialogue, Storage, Script, goto, say, ask, expect, onText, location, onLocation, onFile, onAudio, onImage, onVideo, image, audio, buttons, list, defaultAction, UnexpectedInputError, mock } from './dialogue-builder'
+import { Dialogue, dialogue, Storage, Script, goto, say, ask, expect, onText, location, onLocation, onFile, onAudio, onImage, onVideo, image, audio, buttons, list, defaultAction, UnexpectedInputError, mock, onUndo } from './dialogue-builder'
 import { fbTemplate } from 'claudia-bot-builder'
 
 Object.defineProperty(global, 'jasmineRequire', {
@@ -507,20 +507,7 @@ describe("Dialogue", () => {
         await dialogue.consume(mock.message('Blah'), mock.apiRequest);
         jasmine.expect(handler.defaultAction).toHaveBeenCalled();      
     });
-    
-    it("invokes the defaultAction handler if no other more suitable handler defined" , async function(this: This) {
-        const handler = jasmine.createSpyObj('response', ['defaultAction'])
-        const [dialogue] = this.build(() => [
-            ask `How are you?`, 
-            expect `I feel`, {
-                [defaultAction]: () => handler.defaultAction(),
-                [onAudio]: () => null
-            }
-        ], [{ type: 'expect', name: `I feel` }]);
-        await dialogue.consume(mock.message('Blah'), mock.apiRequest);
-        jasmine.expect(handler.defaultAction).toHaveBeenCalled();      
-    });
-    
+
     it("prefers any suitable handler over the defaultAction handler", async function(this: This) {
         const [dialogue] = this.build(() => [
             ask `How are you?`, 
@@ -871,19 +858,23 @@ describe("Dialogue", () => {
     });
 
     it("returns to previously asked question when user sends a undo keyword", async function(this: This) {
+        const undoHandler = jasmine.createSpy('onUndo')
         const [dialogue, storage] = this.build(() => [
             say `Don't repeat this on undo`,
             ask `How are you?`,
             expect `I feel`, {
-                'Amazing': null
+                'Amazing': null,
+                [onUndo]: () => undoHandler()
             },
             ask `But why?`, 
             expect `I feel that way because`, {
-                'Just cos': null
+                'Just cos': null,
+                [onUndo]: () => fail('Wrong undo handler called')
             },
         ], [{ type: 'expect', name: `I feel that way because` }, { type: 'expect', name: `I feel` }]);
         dialogue.setKeywordHandler('back', 'undo')
         const result = await dialogue.consume(mock.message('back'), mock.apiRequest)
+        jasmine.expect(undoHandler).toHaveBeenCalledTimes(1);
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: `I feel` }]);
         jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Don't repeat this on undo` })
@@ -894,18 +885,22 @@ describe("Dialogue", () => {
     });
 
     it("returns to last asked question when user sends a undo keyword when complete", async function(this: This) {
+        const undoHandler = jasmine.createSpy('onUndo')
         const [dialogue, storage] = this.build(() => [
             ask `How are you?`,
             expect `I feel`, {
-                'Amazing': null
+                'Amazing': null,
+                [onUndo]: () => fail('Wrong undo handler called')
             },
             ask `But why?`, 
             expect `I feel that way because`, {
-                'Just cos': null
+                'Just cos': null,
+                [onUndo]: () => undoHandler()
             },
         ], [{type: 'complete'}, { type: 'expect', name: `I feel that way because` }, { type: 'expect', name: `I feel` }]);
         dialogue.setKeywordHandler('back', 'undo')
         const result = await dialogue.consume(mock.message('back'), mock.apiRequest)
+        jasmine.expect(undoHandler).toHaveBeenCalledTimes(1);
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: `I feel that way because` }, { type: 'expect', name: `I feel` }]);
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `But why?` })
@@ -913,23 +908,28 @@ describe("Dialogue", () => {
     });
 
     it("accounts for skipped questions due to goto statements when user sends a undo keyword", async function(this: This) {
+        const undoHandler = jasmine.createSpy('onUndo')
         const [dialogue, storage] = this.build(() => [
             ask `How are you?`,
             expect `I feel`, {
-                'Amazing': goto `why`
+                'Amazing': goto `why`,
+                [onUndo]: () => undoHandler()
             },
             ask `Where are you?`, 
             expect `I am at`, {
-                [location]: null
+                [location]: null,
+                [onUndo]: () => fail('Wrong undo handler called')
             },
             'why',
             ask `But why?`, 
             expect `I feel that way because`, {
-                'Just cos': goto `end`
+                'Just cos': null,
+                [onUndo]: () => fail('Wrong undo handler called')
             },
         ], [{ type: 'expect', name: `I feel that way because` }, { type: 'label', name: `why` }, { type: 'expect', name: `I feel` }]);
         dialogue.setKeywordHandler('back', 'undo')
         const result = await dialogue.consume(mock.message('back'), mock.apiRequest)
+        jasmine.expect(undoHandler).toHaveBeenCalledTimes(1);
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: `I feel` }]);
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `How are you?` })
@@ -940,7 +940,8 @@ describe("Dialogue", () => {
         const [dialogue, storage] = this.build(() => [
             ask `How are you?`,
             expect `I feel`, {
-                'Amazing': null
+                'Amazing': null,
+                [onUndo]: () => fail('Undo handler called')
             },
         ], []);
         dialogue.setKeywordHandler('start over', 'restart')

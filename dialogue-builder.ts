@@ -7,10 +7,10 @@ import Text = builder.fbTemplate.Text;
 import Pause = builder.fbTemplate.Pause;
 import List = builder.fbTemplate.List;
 import Button = builder.fbTemplate.Button;
+import Generic = builder.fbTemplate.Generic;
 import Attachment = builder.fbTemplate.Attachment;
 import ChatAction = builder.fbTemplate.ChatAction;
 
-export const defaultAction = Symbol("a default action")
 export const location = Symbol("a location")
 export const onText = Symbol("a typed response")
 export const onLocation = Symbol("a location")
@@ -18,6 +18,8 @@ export const onImage = Symbol("an image")
 export const onAudio = Symbol("a voice recording")
 export const onVideo = Symbol("a video")
 export const onFile = Symbol("a file")
+export const defaultAction = Symbol("defaultAction")
+export const onUndo = Symbol("undo")
 
 export type ResponseHandler = any
 // export interface ResponseHandler {
@@ -44,7 +46,6 @@ class UndefinedHandlerError extends UnexpectedInputError {
 
 export class Directive {
     constructor(private readonly text: string) {}
-
     toString(): string {
         return this.text;
     }    
@@ -53,46 +54,36 @@ export class Directive {
 export type Label = String
 export class Expect extends Directive {}
 export class Goto extends Directive {}
-
 class Ask extends Text {}
 
 export type Script = Array<BaseTemplate | Label | Directive | ResponseHandler>
-
 export function say(template: TemplateStringsArray, ...substitutions: any[]): Text {
     return new Text(String.raw(template, ...substitutions).replace(/([\s]) +/g, '$1'));
 }
-
 export function ask(template: TemplateStringsArray, ...substitutions: any[]): Text {
     return new Ask(String.raw(template, ...substitutions).replace(/([\s]) +/g, '$1'));
 }
-
 export function expect(template: TemplateStringsArray, ...substitutions: any[]): Expect {
     return new Expect(String.raw(template, ...substitutions));
 }
-
 export function goto(template: TemplateStringsArray, ...substitutions: any[]): Goto {
     return new Goto(String.raw(template, ...substitutions));
 }
-
 export function audio(template: TemplateStringsArray, ...substitutions: any[]): Attachment {
     return new Attachment(String.raw(template, ...substitutions), 'audio');
 }
-
 export function video(template: TemplateStringsArray, ...substitutions: any[]): Attachment {
     return new Attachment(String.raw(template, ...substitutions), 'video');
 }
-
 export function image(template: TemplateStringsArray, ...substitutions: any[]): Attachment {
     return new Attachment(String.raw(template, ...substitutions), 'image');
 }
-
 export function file(template: TemplateStringsArray, ...substitutions: any[]): Attachment {
     return new Attachment(String.raw(template, ...substitutions), 'file');
 }
 
 export type ButtonHandler = { [title: string]: () =>  Goto | void}
 export type Bubble = [string, string, string, ButtonHandler]
-
 export function buttons(id: string, text: string, handler: ButtonHandler): Button {
     const buttons = new Button(text);
     buttons.identifier = `buttons '${id}'`;
@@ -103,7 +94,6 @@ export function buttons(id: string, text: string, handler: ButtonHandler): Butto
     });
     return buttons;
 }
-
 export function list(id: string, type: 'compact'|'large', bubbles: Bubble[], handler: ButtonHandler): List {
     const list = new List(type);
     list.identifier = `list '${id}'`;
@@ -133,17 +123,14 @@ export function dialogue<T>(name: string, script: (...context: T[]) => Script): 
     builder.dialogueName = name;
     return builder;
 }
-
 export interface DialogueBuilder<T> {
     (...context: T[]): Script
     dialogueName: string
 }
-
 export interface Storage {
     store(state: any): any | Promise<any>
     retrieve(): any | Promise<any>
 }
-
 interface Processor { 
     consumePostback(identifier: string): boolean
     consumeKeyword(keyword: string): boolean 
@@ -151,16 +138,13 @@ interface Processor {
     addQuickReplies(message: BaseTemplate, handler: ResponseHandler): this
     insertPauses(output: BaseTemplate[]): Array<{ get(): string}>
 }
-
 export class Dialogue<T> {
     private readonly build: () => void
     private readonly state: State
     private readonly handlers: Map<string, () =>  void | Goto>
     private script: Script
     private outputFilter: (o: BaseTemplate) => boolean
-
     public baseUrl: string
-
     constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]) {
         this.build = () => this.script = builder(...context);
         this.build();
@@ -206,7 +190,10 @@ export class Dialogue<T> {
         const keys = keywords instanceof Array ? keywords : [keywords];
         const undo = () => { 
             this.outputFilter = o => o instanceof Ask; 
-            this.state.undo(2);  
+            this.state.undo();
+            const handler = this.script[this.state.startLine - 1];
+            handler && handler[onUndo] && handler[onUndo]();
+            this.state.undo();
         }
         const h = handler === 'restart' ? () => this.state.restart() : handler === 'undo' ? undo : handler;
         keys.forEach(k => this.handlers.set(`keyword '${k.toLowerCase()}'`, h));
@@ -232,7 +219,7 @@ export class Dialogue<T> {
                 await processResponse(line);
             } catch(e) {
                 if(!(e instanceof UnexpectedInputError)) throw e;
-                this.state.undo(1);
+                this.state.undo();
                 output.push(new Text(e.message));
                 this.outputFilter = o => e.repeatQuestion ? o instanceof Ask : false;
             }
@@ -333,19 +320,15 @@ export class Dialogue<T> {
 class State {
     private state: Array<{ type: 'label'|'expect'|'complete', name?: string }>
     private jumpCount = 0;
-
     constructor(private storage: Storage, private expects: Map<string, number>, private labels: Map<string, number>) {
     }
-
     async retrieveState() {
         this.state = this.state || await this.storage.retrieve() || [];
     }
-
     get isComplete(): boolean {
         assert(this.state);
         return this.state[0] && this.state[0].type === 'complete';
     }
-
     get startLine(): number {
         assert(this.state);
         switch(this.state[0] && this.state[0].type) {
@@ -361,7 +344,6 @@ class State {
                 throw new Error(`Unexpected type ${this.state[0].type}`);
         }
     }
-
     jump(location: Directive, lineOrIdentifier: number|string): number {
         assert(this.state);
         if(++this.jumpCount > 10) throw new Error(`Endless loop detected ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: ${location.constructor.name.toLowerCase()} \`${location.toString()}\``);
@@ -378,22 +360,18 @@ class State {
         }
         return this.startLine;
     }
-
-
     async complete(expect?: Expect) {
         assert(this.state);
         this.state.unshift(expect ? { type: 'expect', name: expect.toString()} : { type: 'complete'});
         await this.storage.store(this.state);
-    }
-    
+    }    
     restart() {
         assert(this.state);
         this.state.length = 0;
     }
-
-    undo(steps: number) {
+    undo() {
         assert(this.state);
-        this.state.splice(0, this.state.findIndex((s, i) => (i+1 >= steps && s.type === 'expect') || i+1 === this.state.length) + 1);                
+        this.state.splice(0, this.state.findIndex((_, i, s) => i+1 === this.state.length || s[i+1].type === 'expect') + 1);                
     }
 }
 
@@ -530,6 +508,11 @@ Text.prototype.getReadingDuration = function(this: Text) { return this.template.
 
 BaseTemplate.prototype.setBaseUrl = function(this: List, url: string) { return this }
 List.prototype.setBaseUrl = function(this: List, url: string) { 
+    this.bubbles.forEach(b => b.image_url = !b.image_url || b.image_url.indexOf('://') >= 0 ? b.image_url : url + b.image_url);
+    return this;
+}
+
+Generic.prototype.setBaseUrl = function(this: Generic, url: string) { 
     this.bubbles.forEach(b => b.image_url = !b.image_url || b.image_url.indexOf('://') >= 0 ? b.image_url : url + b.image_url);
     return this;
 }

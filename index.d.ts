@@ -17,6 +17,14 @@ declare module "claudia-api-builder" {
     }
 }
 
+declare module "claudia-bot-builder/lib/facebook/reply" {
+    import { fbTemplate } from 'claudia-bot-builder'
+
+    function fbReply(recipient: string, message: string | string[] | object | object[], fbAccessToken: string): Promise<object>
+
+    export = fbReply
+}
+
 declare module "claudia-bot-builder" {
 
     import { Request } from 'claudia-api-builder'
@@ -100,12 +108,22 @@ declare module "claudia-bot-builder" {
                 addBubble(title: string, subtitle?: string): this
                 addDefaultAction(url: string): this
                 addImage(url: string): this
-                addImage(url: string, subtitle?: string): this
                 addButton(title: string, value: string): this
                 addListButton(title: string, value: string): this
-                addShareButton(): this
                 getFirstBubble(): string 
                 getLastBubble(): { title: string, subtitle: string } 
+            }
+
+            class Generic extends BaseTemplate {
+                constructor(topElementStyle: 'large'|'compact')
+                bubbles: Array<{ image_url?: string }>
+                useSquareImages(): this
+                addBubble(title: string, subtitle?: string): this
+                addUrl(url: string): this
+                addImage(url: string): this
+                addButton(title: string, value: string): this
+                addCallButton(title: string, phoneNumber: string): this
+                addShareButton(): this
             }
 
             class ChatAction {
@@ -164,6 +182,7 @@ declare module "dialogue-builder" {
     export const onAudio: symbol;
     export const onVideo: symbol;
     export const onFile: symbol;
+    export const onUndo: symbol;
     export type ResponseHandler = any;
 // export interface ResponseHandler {
 //     readonly [quickReply: string]: () => Goto | Expect | void | Promise<Goto | Expect | void>

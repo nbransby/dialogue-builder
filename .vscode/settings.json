@@ -16,6 +16,6 @@
     "editor.fontFamily": "Fira Code",
     "editor.fontSize": 14,
     "vsicons.presets.angular": false,
-    //"typescript.referencesCodeLens.enabled": true,
+    "typescript.referencesCodeLens.enabled": true,
     "debug.inlineValues": true
 }

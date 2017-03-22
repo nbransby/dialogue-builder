@@ -6,7 +6,6 @@ import Text = builder.fbTemplate.Text;
 import List = builder.fbTemplate.List;
 import Button = builder.fbTemplate.Button;
 import Attachment = builder.fbTemplate.Attachment;
-export declare const defaultAction: symbol;
 export declare const location: symbol;
 export declare const onText: symbol;
 export declare const onLocation: symbol;
@@ -14,6 +13,8 @@ export declare const onImage: symbol;
 export declare const onAudio: symbol;
 export declare const onVideo: symbol;
 export declare const onFile: symbol;
+export declare const defaultAction: symbol;
+export declare const onUndo: symbol;
 export declare type ResponseHandler = any;
 export declare class UnexpectedInputError {
     message: string;
