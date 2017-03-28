@@ -108,7 +108,7 @@ The array passed to the dialogue function form the lines of your script, an elem
 * `file` _string_: Send a file, the string passed in should be a url
 * `expect` _string_: This statement marks a break in the dialogue to wait for a user response. The _string_ you pass is the response you expect from the user, it's used as a key when persisting the state of the conversation and so *must* be a string unique amongst all expect statements. An expect statement must always be immediately followed by a [`ResponseHandler`](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-defaultaction-symbols)
 * `goto` _string_: A goto statement will cause the dialogue to jump to another location in the script. The string you pass in specifies the label to jump to. `goto` statements can also be returned from a [`ResponseHandler's`](#location-ontext-onlocation-onimage-onaudio-onvideo-onfile-defaultaction-symbols) methods
-* _string_: Any untagged strings in the array are treated as labels which serve as the destination of goto statements. When gathering the next set of outgoing messages, the dialogue will fall through labels by default. You can override this behavior by prefixing your label with an exclamation mark (!) - this causes the dialogue to break at the label. Once dialogue has stopped at a label only a goto statement will restart it (use this feature when you want to wait for postback)
+* _string_: Any untagged strings in the array are treated as labels which serve as the destination of goto statements. When gathering the next set of outgoing messages, the dialogue will fall through labels by default. You can override this behavior by prefixing your label with an exclamation mark (!) - this causes the dialogue to break at the label. Once dialogue has stopped at a label only a goto statement will restart it (use this feature when you want to wait for a postback)
 * `fbTemplate.BaseTemplate`: You can embed any facebook message type supported by bot builder directly in your script, see [Facebook Template Builder](https://github.com/claudiajs/claudia-bot-builder/blob/master/docs/FB_TEMPLATE_MESSAGE_BUILDER.md) for more info
 
 ### `buttons`, `list` functions
@@ -131,12 +131,12 @@ A `ResponseHandler` is an object who's methods are called on receiving a message
 * _string_`(text?: string)`: A string property causes a quick reply to be attached to the last outgoing message, the function is called on the user selecting the reply, the text passed in will always be the same as the function name
 * `[location](lat: number, long: number, title?: string, url?: string)`: The `location` symbol property causes a location quick reply to be attached to the last outgoing message, the function is called on the user selecting the reply
 * `[onText](text: string)`: The `onText` symbol property is called when the user types a text response that doesn't match any of the quick replies
-* `[onLocation](lat: number, long: number, title?: string, url?: string)`: The `onLocation` symbol property is called when the user types a sends a location, you cannot define both `location` and `onLocation` properties on the same response handler
+* `[onLocation](lat: number, long: number, title?: string, url?: string)`: The `onLocation` symbol property is called when the user sends a location, you cannot define both `location` and `onLocation` properties on the same response handler
 * `[onImage](url: string)`: The `onImage` symbol property is called when the user sends an image
 * `[onAudio](url: string)`: The `onAudio` symbol property is called when the user sends an audio recording
 * `[onVideo](url: string)`: The `onVideo` symbol property is called when the user sends a video
 * `[onFile](url: string)`: The `onFile` symbol property is called when the user sends a file
-* `[defaultAction]()`: The `defaultAction` symbol property is called when for any action if no other property matches the user's response so can be used as a catch all. It is also used to specify the default action on [buttons and lists](#buttons-list-functions)
+* `[defaultAction]()`: The `defaultAction` symbol property is called if no other mathod matches the user's response so can be used as a catch all. It is also used to specify the default action on [buttons and lists](#buttons-list-functions)
 
 All response handler methods support returning one of `Goto | Expect | void`, you can also return a promise resolving to one of the same set of types: `Promise<Goto | Expect | void>`
 
