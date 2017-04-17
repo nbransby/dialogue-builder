@@ -6,6 +6,5 @@
     "isShellCommand": true,
     "args": ["-p", "${workspaceRoot}"],
     "showOutput": "silent",
-    "problemMatcher": "$tsc",
-    "_runner": "terminal"
+    "problemMatcher": "$tsc"
 }

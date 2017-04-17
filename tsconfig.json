@@ -1,11 +1,7 @@
 {
     "compilerOptions": {
         "module": "commonjs",
-        "target": "es6",
-        "lib": [
-            "es5",
-            "es6"
-        ],
+        "target": "es2017",
         "declaration": true,
         "pretty": true,
         "sourceMap": true,
@@ -15,7 +11,7 @@
         "allowSyntheticDefaultImports": false,
         "allowUnusedLabels": false,
         "preserveConstEnums": true,
-        "noUnusedParameters": false,
+        "noUnusedParameters": true,
         "noUnusedLocals": true,
         "noImplicitThis": true,
         "noImplicitReturns": true,

@@ -212,7 +212,7 @@ describe("Dialogue", () => {
         const [dialogue, storage] = this.build(() => [
             ask `How are you?`, 
             expect `I feel`, {
-                [onText](text: string): void {}
+                [onText](): void {}
             },
         ], [{ type: 'expect', name: `I feel` }]);
         jasmine.expect(await dialogue.consume(mock.message('Amazing'), mock.apiRequest)).toEqual([]);
@@ -224,7 +224,7 @@ describe("Dialogue", () => {
         const [dialogue] = this.build((context: { foo: string }) => [
             ask `How are you?`, 
             expect `I feel`, {
-                [onText]: (text: string) => context.foo = 'baz'
+                [onText]: () => context.foo = 'baz'
             },
             say `${context.foo}`
         ], [{ type: 'expect', name: `I feel` }], undefined, context);
@@ -523,16 +523,20 @@ describe("Dialogue", () => {
         const [dialogue, storage] = this.build(() => [
             ask `What do you sound like?`,
             expect `I sound like`, {
-                [onAudio]: (url: string) => null
+                [onAudio]: () => null
             },
             ask `What do you write like?`,
             say `This won't be repeated`,
             new fbTemplate.Text('Or this'),
             ask `Send us a word document`,
             expect `I write like`, {
-                [onFile]: (url: string) => null
+                [onFile]: () => null
             },
-            ask `How are you?`
+            ask `How are you?`,
+            expect `I feel`, {
+                [onText]: () => null,
+                [defaultAction]: () => fail('Should not be called')
+            },            
         ], [{ type: 'expect', name: `I write like` }, { type: 'expect', name: `I sound like` }]);
         const result = await dialogue.consume(mock.multimedia("audio", "recording.wav"), mock.apiRequest);
         jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: `I write like` }, { type: 'expect', name: `I sound like` }]);
@@ -550,7 +554,7 @@ describe("Dialogue", () => {
         const [dialogue, storage] = this.build(() => [
             ask `What do you sound like?`,
             expect `I sound like`, {
-                [onAudio]: (url: string) => { throw new UnexpectedInputError('Your voice is too high pitched'); }
+                [onAudio]: () => { throw new UnexpectedInputError('Your voice is too high pitched'); }
             },
             ask `How are you?`
         ], [{ type: 'expect', name: `I sound like` }]);
@@ -569,7 +573,7 @@ describe("Dialogue", () => {
         const [dialogue] = this.build(() => [
             ask `What do you sound like?`,
             expect `I sound like`, {
-                [onAudio]: (url: string) => { throw new UnexpectedInputError('Your voice is too high pitched', false); }
+                [onAudio]: () => { throw new UnexpectedInputError('Your voice is too high pitched', false); }
             }
         ], [{ type: 'expect', name: `I sound like` }]);
         const result = await dialogue.consume(mock.multimedia("audio", "recording.wav"), mock.apiRequest);
@@ -766,10 +770,14 @@ describe("Dialogue", () => {
             ask `But why?`, 
             expect `I feel that way because`, {
                 [onText]: (text: string) => handler.onText(text)
-            }
+            },
+            say `Goodbye`            
         ], [{ type: 'expect', name: `I feel` }]);
-        await dialogue.consume(mock.message('Amazing'), mock.apiRequest);
+        const result = await dialogue.consume(mock.message('Amazing'), mock.apiRequest);
         jasmine.expect(handler.onText).toHaveBeenCalledWith('Amazing');    
+        jasmine.expect(result).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: 'But why?' }), 
+        ]));
     });
 
     it("aborts an expect returned from response handler that causes an endless loop", async function(this: This) {

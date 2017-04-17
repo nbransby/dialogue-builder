@@ -9,6 +9,7 @@ declare module "claudia-api-builder" {
         queryString: { [key: string]: string }
         env: { [key: string]: string }
         headers: { [key: string]: string }
+        proxyRequest: { requestContext: { [key: string]: string } }
         normalizedHeaders: { [key: string]: string }
         lambdaContext: { 
             callbackWaitsForEmptyEventLoop: boolean 

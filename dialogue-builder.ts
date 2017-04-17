@@ -18,8 +18,8 @@ export const onImage = Symbol("an image")
 export const onAudio = Symbol("a voice recording")
 export const onVideo = Symbol("a video")
 export const onFile = Symbol("a file")
-export const defaultAction = Symbol("defaultAction")
-export const onUndo = Symbol("undo")
+export const defaultAction = Symbol()
+export const onUndo = Symbol()
 
 export type ResponseHandler = any
 // export interface ResponseHandler {
@@ -39,7 +39,7 @@ export class UnexpectedInputError {
 
 class UndefinedHandlerError extends UnexpectedInputError {
     constructor(handler: ResponseHandler) {
-        const keys = Object.getOwnPropertySymbols(handler).map(symbol => /Symbol\((.*)\)/.exec(symbol.toString())![1]);
+        const keys = Object.getOwnPropertySymbols(handler).map(symbol => /Symbol\((.*)\)/.exec(symbol.toString())![1]).filter(k => k.length > 0);
         super(`Sorry, I didn't quite catch that${keys.length === 0 ? '' : `, I was expecting ${keys.join(' or ')}`}`)
     }
 }
@@ -88,7 +88,7 @@ export function buttons(id: string, text: string, handler: ButtonHandler): Butto
     const buttons = new Button(text);
     buttons.identifier = `buttons '${id}'`;
     buttons.postbacks = [];
-    Object.keys(handler).forEach((key, i) => {
+    Object.keys(handler).forEach(key => {
         const payload = `'${key}' button in buttons '${id}'`;
         buttons.addButton(key, payload).postbacks!.push([payload, handler[key]]);
     });
@@ -106,12 +106,12 @@ export function list(id: string, type: 'compact'|'large', bubbles: Bubble[], han
             const payload = `default action of ${ordinals[index]} bubble of list '${id}'`;
             list.addDefaultAction(payload).postbacks!.push([payload, handler[defaultAction]]);
         }
-        Object.keys(handler).forEach((key, i) => {
+        Object.keys(handler).forEach(key => {
             const payload = `'${key}' button in ${ordinals[index]} bubble of list '${id}'`;
             list.addButton(key, payload).postbacks!.push([payload, handler[key]])
         });
     });
-    Object.keys(handler).forEach((key, i) => {
+    Object.keys(handler).forEach(key => {
         const payload = `'${key}' button in list '${id}'`;
         list.addListButton(key, payload).postbacks!.push([payload, handler[key]]);
     });
@@ -213,7 +213,7 @@ export class Dialogue<T> {
                 const processResponse = async (line: number): Promise<void> => {
                     const result = await processor.consumeResponse(this.script[line - 1]);
                     if(!(result instanceof Directive)) return;
-                    line = this.state.jump(result, `expect \`${this.script[line - 2].toString()}\``);
+                    line = this.state.jump(result, `expect \`${this.script[line - 2].toString()}\``, false);
                     result instanceof Expect && await processResponse(line);
                 }
                 await processResponse(line);
@@ -277,21 +277,21 @@ export class Dialogue<T> {
                 for(let attachment of message.originalRequest.message.attachments || []) {
                     switch(attachment.type) {
                         case 'location':
-                            const invoke = (m: Function) => m(attachment.payload.coordinates!.lat, attachment.payload.coordinates!.long, attachment.payload.title, attachment.payload.url);
+                            const invoke = (m: Function) => m.call(handler, attachment.payload.coordinates!.lat, attachment.payload.coordinates!.long, attachment.payload.title, attachment.payload.url);
                             return handle(handler, invoke, location, onLocation, defaultAction);
                         case 'image':
-                            return handle(handler, m => m(attachment.payload.url), onImage, defaultAction);
+                            return handle(handler, m => m.call(handler, attachment.payload.url), onImage, defaultAction);
                         case 'audio':
-                            return handle(handler, m => m(attachment.payload.url), onAudio, defaultAction);
+                            return handle(handler, m => m.call(handler, attachment.payload.url), onAudio, defaultAction);
                         case 'video':
-                            return handle(handler, m => m(attachment.payload.url), onVideo, defaultAction);
+                            return handle(handler, m => m.call(handler, attachment.payload.url), onVideo, defaultAction);
                         case 'file':
-                            return handle(handler, m => m(attachment.payload.url), onFile, defaultAction);
+                            return handle(handler, m => m.call(handler, attachment.payload.url), onFile, defaultAction);
                         default:
                             throw new Error(`Unsupported attachment type '${attachment.type}'`)
                     }
                 }
-                return handle(handler, m => m(message.text), message.text, onText, defaultAction);
+                return handle(handler, m => m.call(handler, message.text), message.text, onText, defaultAction);
             },
             addQuickReplies(this: Processor, message, handler) {
                 //add quick replies if present
@@ -344,20 +344,20 @@ class State {
                 throw new Error(`Unexpected type ${this.state[0].type}`);
         }
     }
-    jump(location: Directive, lineOrIdentifier: number|string): number {
+    jump(location: Directive, lineOrIdentifier: number|string, persist = true): number {
         assert(this.state);
         if(++this.jumpCount > 10) throw new Error(`Endless loop detected ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: ${location.constructor.name.toLowerCase()} \`${location.toString()}\``);
         if(location instanceof Expect) {
-            if(!this.expects.has(location.toString())) throw new Error(`Could not find expect referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: expect \`${location.toString()}\``);        
-            const count = this.state.findIndex(s => s.type === 'expect' && s.name === location.toString()) + 1;
-            this.state.splice(0, count, { type: 'expect', name: location.toString() });    
-        } else {
-            const label = location.toString().startsWith('!') ? location.toString().substring(1) : location.toString();
-            if(!this.labels.has(label)) throw new Error(`Could not find label referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: goto \`${location.toString()}\``);        
-            console.log(`Jumping to label '${label}' from ${typeof lineOrIdentifier == 'number' ? 'line' : ''} ${lineOrIdentifier}: goto \`${location.toString()}\``);
-            if(this.isComplete) this.state.shift(); 
-            this.state.unshift({ type: 'label', name: label});
+            const line = this.expects.get(location.toString())
+            if(line === undefined) throw new Error(`Could not find expect referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: expect \`${location.toString()}\``);        
+            if(persist) this.state.unshift({ type: 'expect', name: location.toString() });    
+            return line+ 2 || 0;
         }
+        const label = location.toString().startsWith('!') ? location.toString().substring(1) : location.toString();
+        if(!this.labels.has(label)) throw new Error(`Could not find label referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: goto \`${location.toString()}\``);        
+        console.log(`Jumping to label '${label}' from ${typeof lineOrIdentifier == 'number' ? 'line' : ''} ${lineOrIdentifier}: goto \`${location.toString()}\``);
+        if(this.isComplete) this.state.shift(); 
+        this.state.unshift({ type: 'label', name: label});
         return this.startLine;
     }
     async complete(expect?: Expect) {
@@ -382,6 +382,9 @@ export namespace mock {
         env: {},
         headers: {},
         normalizedHeaders: {},
+        proxyRequest: { 
+            requestContext: {} 
+        },
         lambdaContext: { 
             callbackWaitsForEmptyEventLoop: false,
             getRemainingTimeInMillis: () => 15
@@ -504,9 +507,14 @@ declare module "claudia-bot-builder" {
 }
 
 BaseTemplate.prototype.getReadingDuration = () => 1000;
-Text.prototype.getReadingDuration = function(this: Text) { return this.template.text.match(/\w+/g)!.length * 250; }
+Text.prototype.getReadingDuration = function(this: Text) { 
+    return this.template.text.match(/\w+/g)!.length * 250; 
+}
 
-BaseTemplate.prototype.setBaseUrl = function(this: List, url: string) { return this }
+BaseTemplate.prototype.setBaseUrl = function(this: List) { 
+    return this 
+}
+
 List.prototype.setBaseUrl = function(this: List, url: string) { 
     this.bubbles.forEach(b => b.image_url = !b.image_url || b.image_url.indexOf('://') >= 0 ? b.image_url : url + b.image_url);
     return this;
