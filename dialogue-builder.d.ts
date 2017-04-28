@@ -5,6 +5,7 @@ import BaseTemplate = builder.fbTemplate.BaseTemplate;
 import Text = builder.fbTemplate.Text;
 import List = builder.fbTemplate.List;
 import Button = builder.fbTemplate.Button;
+import Generic = builder.fbTemplate.Generic;
 import Attachment = builder.fbTemplate.Attachment;
 export declare const location: symbol;
 export declare const onText: symbol;
@@ -19,7 +20,8 @@ export declare type ResponseHandler = any;
 export declare class UnexpectedInputError {
     message: string;
     repeatQuestion: boolean;
-    constructor(message: string, repeatQuestion?: boolean);
+    showQuickReplies: boolean;
+    constructor(message?: string, repeatQuestion?: boolean, showQuickReplies?: boolean);
 }
 export declare class Directive {
     private readonly text;
@@ -43,17 +45,23 @@ export declare function file(template: TemplateStringsArray, ...substitutions: a
 export declare type ButtonHandler = {
     [title: string]: () => Goto | void;
 };
-export declare type Bubble = [string, string, string, ButtonHandler];
+export interface Bubble {
+    title: string;
+    subtitle?: string;
+    image?: string;
+    buttons?: ButtonHandler;
+}
 export declare function buttons(id: string, text: string, handler: ButtonHandler): Button;
-export declare function list(id: string, type: 'compact' | 'large', bubbles: Bubble[], handler: ButtonHandler): List;
+export declare function list(id: string, type: 'compact' | 'large', bubbles: Bubble[], handler?: ButtonHandler): List;
+export declare function generic(id: string, type: 'horizontal' | 'square', bubbles: Bubble[]): Generic;
 export declare function dialogue<T>(name: string, script: (...context: T[]) => Script): DialogueBuilder<T>;
 export interface DialogueBuilder<T> {
     (...context: T[]): Script;
     dialogueName: string;
 }
 export interface Storage {
-    store(state: any): any | Promise<any>;
-    retrieve(): any | Promise<any>;
+    store(state: string): any | Promise<any>;
+    retrieve(): string | undefined | Promise<string | undefined>;
 }
 export declare class Dialogue<T> {
     private readonly build;

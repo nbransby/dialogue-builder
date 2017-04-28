@@ -34,7 +34,7 @@ const ordinals = ['first', 'second', 'third', 'forth', 'fifth', 'sixth', 'sevent
 
 
 export class UnexpectedInputError {
-    constructor(public message: string, public repeatQuestion: boolean = true) {}
+    constructor(public message?: string, public repeatQuestion = true, public showQuickReplies = true) {}
 }
 
 class UndefinedHandlerError extends UnexpectedInputError {
@@ -83,7 +83,12 @@ export function file(template: TemplateStringsArray, ...substitutions: any[]): A
 }
 
 export type ButtonHandler = { [title: string]: () =>  Goto | void}
-export type Bubble = [string, string, string, ButtonHandler]
+export interface Bubble {
+    title: string, 
+    subtitle?: string, 
+    image?: string, 
+    buttons?: ButtonHandler 
+}
 export function buttons(id: string, text: string, handler: ButtonHandler): Button {
     const buttons = new Button(text);
     buttons.identifier = `buttons '${id}'`;
@@ -94,28 +99,47 @@ export function buttons(id: string, text: string, handler: ButtonHandler): Butto
     });
     return buttons;
 }
-export function list(id: string, type: 'compact'|'large', bubbles: Bubble[], handler: ButtonHandler): List {
+export function list(id: string, type: 'compact'|'large', bubbles: Bubble[], handler?: ButtonHandler): List {
     const list = new List(type);
     list.identifier = `list '${id}'`;
     list.postbacks = [];
     bubbles.forEach((bubble, index) => {
-        const [title, subtitle, image, handler] = bubble;
-        list.addBubble(title, subtitle);
-        if(image) list.addImage(image);
-        if(handler[defaultAction]) {
+        list.addBubble(bubble.title, bubble.subtitle);
+        if(bubble.image) list.addImage(bubble.image);
+        if(bubble.buttons &&  bubble.buttons[defaultAction]) {
             const payload = `default action of ${ordinals[index]} bubble of list '${id}'`;
-            list.addDefaultAction(payload).postbacks!.push([payload, handler[defaultAction]]);
+            list.addDefaultAction(payload).postbacks!.push([payload, bubble.buttons[defaultAction]]);
         }
-        Object.keys(handler).forEach(key => {
+        bubble.buttons && Object.keys(bubble.buttons).forEach(key => {
             const payload = `'${key}' button in ${ordinals[index]} bubble of list '${id}'`;
-            list.addButton(key, payload).postbacks!.push([payload, handler[key]])
+            list.addButton(key, payload).postbacks!.push([payload, bubble.buttons![key]])
         });
     });
-    Object.keys(handler).forEach(key => {
+    handler && Object.keys(handler).forEach(key => {
         const payload = `'${key}' button in list '${id}'`;
         list.addListButton(key, payload).postbacks!.push([payload, handler[key]]);
     });
     return list;
+}
+
+export function generic(id: string, type: 'horizontal'|'square', bubbles: Bubble[]): Generic {
+    const generic = new Generic();
+    generic.identifier = `generic '${id}'`;
+    generic.postbacks = [];
+    if(type == 'square') generic.useSquareImages();
+    bubbles.forEach((bubble, index) => {
+        generic.addBubble(bubble.title, bubble.subtitle);
+        if(bubble.image) generic.addImage(bubble.image);
+        if(bubble.buttons && bubble.buttons[defaultAction]) {
+            const payload = `default action of ${ordinals[index]} bubble of generic '${id}'`;
+            generic.addDefaultAction(payload).postbacks!.push([payload, bubble.buttons[defaultAction]]);
+        }
+        bubble.buttons && Object.keys(bubble.buttons).forEach(key => {
+            const payload = `'${key}' button in ${ordinals[index]} bubble of generic '${id}'`;
+            generic.addButton(key, payload, '').postbacks!.push([payload, bubble.buttons![key]])
+        });
+    });
+    return generic;
 }
 
 export function dialogue<T>(name: string, script: (...context: T[]) => Script): DialogueBuilder<T> {
@@ -128,14 +152,14 @@ export interface DialogueBuilder<T> {
     dialogueName: string
 }
 export interface Storage {
-    store(state: any): any | Promise<any>
-    retrieve(): any | Promise<any>
+    store(state: string): any | Promise<any>
+    retrieve(): string | undefined | Promise<string | undefined>
 }
 interface Processor { 
     consumePostback(identifier: string): boolean
     consumeKeyword(keyword: string): boolean 
     consumeResponse(handler: ResponseHandler): Promise<void | Goto | Expect>, 
-    addQuickReplies(message: BaseTemplate, handler: ResponseHandler): this
+    addQuickReplies(message: BaseTemplate, handler: ResponseHandler): void
     insertPauses(output: BaseTemplate[]): Array<{ get(): string}>
 }
 export class Dialogue<T> {
@@ -201,6 +225,7 @@ export class Dialogue<T> {
     
     private async process(message: Message, processor: Processor): Promise<string[]> {
         await this.state.retrieveState();
+        let showQuickReplies = true;
         //process input
         const output: Array<BaseTemplate> = []
         if(message.originalRequest.postback) {
@@ -220,8 +245,9 @@ export class Dialogue<T> {
             } catch(e) {
                 if(!(e instanceof UnexpectedInputError)) throw e;
                 this.state.undo();
-                output.push(new Text(e.message));
+                if(e.message) output.push(new Text(e.message));
                 this.outputFilter = o => e.repeatQuestion ? o instanceof Ask : false;
+                showQuickReplies = e.showQuickReplies;
             }
         }
         if(this.state.isComplete) {
@@ -243,9 +269,9 @@ export class Dialogue<T> {
             } else if(element instanceof Expect) {
                 //persist asking of this question
                 await this.state.complete(element);
-                return output.length == 0 ? [] : 
-                    processor.addQuickReplies(output[output.length-1], this.script[i+1])
-                        .insertPauses(output).map(e => e.get());                             
+                if(output.length == 0) return []; 
+                if(showQuickReplies) processor.addQuickReplies(output[output.length-1], this.script[i+1])
+                return processor.insertPauses(output).map(e => e.get());                             
             }
         }
         //persist completion 
@@ -297,7 +323,6 @@ export class Dialogue<T> {
                 //add quick replies if present
                 if(handler[location]) message.addQuickReplyLocation();
                 Object.keys(handler).forEach(key => message.addQuickReply(key, key));
-                return this;
             },
             insertPauses: output => {
                 //calculate pauses between messages
@@ -323,7 +348,10 @@ class State {
     constructor(private storage: Storage, private expects: Map<string, number>, private labels: Map<string, number>) {
     }
     async retrieveState() {
-        this.state = this.state || await this.storage.retrieve() || [];
+        if(!this.state) {
+            const json = await this.storage.retrieve()
+            this.state = typeof json === 'string' ? JSON.parse(json) : [];
+        }
     }
     get isComplete(): boolean {
         assert(this.state);
@@ -363,7 +391,7 @@ class State {
     async complete(expect?: Expect) {
         assert(this.state);
         this.state.unshift(expect ? { type: 'expect', name: expect.toString()} : { type: 'complete'});
-        await this.storage.store(this.state);
+        await this.storage.store(JSON.stringify(this.state));
     }    
     restart() {
         assert(this.state);

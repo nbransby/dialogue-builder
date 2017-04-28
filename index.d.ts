@@ -116,14 +116,14 @@ declare module "claudia-bot-builder" {
             }
 
             class Generic extends BaseTemplate {
-                constructor(topElementStyle: 'large'|'compact')
-                bubbles: Array<{ image_url?: string }>
+                constructor()
                 useSquareImages(): this
+                bubbles: Array<{ title: string, subtitle?: string, image_url?: string }>
                 addBubble(title: string, subtitle?: string): this
-                addUrl(url: string): this
+                getLastBubble(): { title: string, subtitle?: string, image_url?: string }
+                addDefaultAction(url: string): this
                 addImage(url: string): this
-                addButton(title: string, value: string): this
-                addCallButton(title: string, phoneNumber: string): this
+                addButton(title: string, value: string, type: string): this
                 addShareButton(): this
             }
 
@@ -173,6 +173,7 @@ declare module "dialogue-builder" {
     import Message = builder.Message;
     import Text = builder.fbTemplate.Text;
     import List = builder.fbTemplate.List;
+    import Generic = builder.fbTemplate.Generic;
     import Button = builder.fbTemplate.Button;
     import Attachment = builder.fbTemplate.Attachment;
     export const defaultAction: symbol;
@@ -195,8 +196,7 @@ declare module "dialogue-builder" {
     export class UnexpectedInputError {
         message: string;
         repeatQuestion: boolean;
-        expect: Expect;
-        constructor(message: string, repeatQuestion?: boolean);
+        constructor(message?: string, repeatQuestion?: boolean,  showQuickReplies?: boolean);
     }
     export type Label = String;
     export class Directive {
@@ -222,17 +222,23 @@ declare module "dialogue-builder" {
     export  type ButtonHandler = {
         [title: string]: () => Goto | void;
     };
-    export type Bubble = [string, string, string, ButtonHandler];
+    export interface Bubble {
+        title: string;
+        subtitle?: string;
+        image?: string;
+        buttons?: ButtonHandler;
+    }
     export function buttons(id: string, text: string, handler: ButtonHandler): Button;
     export function list(id: string, type: 'compact' | 'large', bubbles: Bubble[], handler: ButtonHandler): List;
+    export function generic(id: string, type: 'horizontal' | 'square', bubbles: Bubble[]): Generic;
     export function dialogue<T>(name: string, script: (...context: T[]) => Script): DialogueBuilder<T>;
     export interface DialogueBuilder<T> {
         (...context: T[]): Script;
         dialogueName: string;
     }
     export interface Storage {
-        store(state: any): any | Promise<any>
-        retrieve(): any | Promise<any>
+        store(state: string): any | Promise<any>
+        retrieve(): string | undefined | Promise<string | undefined>
     }
     export class Dialogue<T> {
         private readonly script;

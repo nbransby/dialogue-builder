@@ -1,8 +1,9 @@
 {
-  "plugins": [
-      // "transform-es2015-parameters", 
-      // "transform-es2015-spread",
-      // "transform-es2015-destructuring"
-      "transform-async-to-generator"
+  "presets": [
+    ["env", {
+      "targets": {
+        "node": 6.10
+      }
+    }]
   ]
 }

@@ -5,7 +5,7 @@
   "main": "dialogue-builder.js",
   "types": "index.d.ts",
   "engines": {
-    "node": ">=6.10"
+    "node": ">=6"
   },
   "dependencies": {
     "claudia-bot-builder": "^2.14.1"
@@ -15,11 +15,7 @@
     "@types/node": "^7.0.4",
     "babel": "^6.5.2",
     "babel-cli": "^6.22.2",
-    "babel-plugin-transform-async-to-generator": "^6.24.1",
-    "babel-plugin-transform-es2015-destructuring": "^6.22.0",
-    "babel-plugin-transform-es2015-parameters": "^6.22.0",
-    "babel-plugin-transform-es2015-spread": "^6.22.0",
-    "babel-preset-env": "^1.1.8",
+    "babel-preset-env": "^1.4.0",
     "codecov": "^1.0.1",
     "eslint": "^3.15.0",
     "eslint-plugin-node": "^3.0.5",
@@ -29,7 +25,6 @@
     "jasmine-ts": "0.0.3",
     "line-number": "^0.1.0",
     "nyc": "^10.0.0",
-    "ts-node": "^2.1.0",
     "typescript": "^2.2.1"
   },
   "scripts": {

@@ -16,7 +16,7 @@ describe("Dialogue", () => {
 
     beforeEach(function(this: This) {
         this.build = function<T>(script: () => Script, state: Array<{ type: 'label'|'expect'|'complete', name?: string }>, storage = jasmine.createSpyObj('storage', ['store', 'retrieve']), ...context: T[]): [Dialogue<T>, Storage] {
-            storage.retrieve.and.callFake(() => Promise.resolve(state));
+            storage.retrieve.and.callFake(() => Promise.resolve(JSON.stringify(state)));
             return [new Dialogue<T>(dialogue("Mock", script), storage, ...context), storage];            
         }        
     });
@@ -53,7 +53,7 @@ describe("Dialogue", () => {
         jasmine.expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(
             jasmine.arrayContaining([jasmine.objectContaining({ text: 'Hi!' })])
         );
-        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete' }]);
+        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
     });
         
     it("sends all messages with NO_PUSH notification type", async function(this: This) {
@@ -70,7 +70,7 @@ describe("Dialogue", () => {
             say `Hi!`
         ], []);
         await dialogue.consume(mock.postback(), mock.apiRequest)
-        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete' }]);
+        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
         await dialogue.consume(mock.message('Hi'), mock.apiRequest)
             .then(() => fail('Did not throw'))
             .catch(() => jasmine.expect(storage.store).toHaveBeenCalledTimes(1))
@@ -87,7 +87,7 @@ describe("Dialogue", () => {
             { claudiaPause: jasmine.anything() },
             jasmine.objectContaining({ text: `How are you?` }),
         ]);
-        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete' }]);
+        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
     });
 
         
@@ -101,7 +101,7 @@ describe("Dialogue", () => {
         ], []);
         const result = await dialogue.consume(mock.postback(), mock.apiRequest);
         jasmine.expect(result.filter(m => m.claudiaPause).reduce((t, m) => t + m.claudiaPause, 0)).toBeLessThan(10 * 1000);
-        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete' }]);
+        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
     });
 
 
@@ -205,7 +205,7 @@ describe("Dialogue", () => {
         jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Don't say this` })
         ]));
-        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: 'I feel'}]);
+        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: 'I feel'}]));
     });
 
     it("resumes where it paused on receiving a response", async function(this: This) {
@@ -216,7 +216,7 @@ describe("Dialogue", () => {
             },
         ], [{ type: 'expect', name: `I feel` }]);
         jasmine.expect(await dialogue.consume(mock.message('Amazing'), mock.apiRequest)).toEqual([]);
-        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'complete'}, { type: 'expect', name: 'I feel'}]);
+        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'expect', name: 'I feel'}]));
     });
 
     it("reevaluates a script after executing a response handler", async function(this: This) {
@@ -338,10 +338,10 @@ describe("Dialogue", () => {
     it("invokes a list bubble's button handler on receiving the postback", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['Go']);
         const myList = list('my list', 'compact', [        
-            ['Title', 'Subtitle', 'image.jpeg', {
-                ['Go']: () => handler.Go()
-            }],
-            ['Title', 'Subtitle', 'image.jpeg', {}]
+            { title: 'Title', subtitle: 'Subtitle', image: 'image.jpeg', buttons: {
+                'Go': () => handler.Go()
+            }},
+            { title: 'Title', subtitle: 'Subtitle', image: 'image.jpeg'}
         ], handler);
         const [dialogue] = this.build(() => [
             myList
@@ -539,7 +539,7 @@ describe("Dialogue", () => {
             },            
         ], [{ type: 'expect', name: `I write like` }, { type: 'expect', name: `I sound like` }]);
         const result = await dialogue.consume(mock.multimedia("audio", "recording.wav"), mock.apiRequest);
-        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: `I write like` }, { type: 'expect', name: `I sound like` }]);
+        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I write like` }, { type: 'expect', name: `I sound like` }]));
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Sorry, I didn't quite catch that, I was expecting a file` }),
             jasmine.objectContaining({ text: `What do you write like?` }),
@@ -559,7 +559,7 @@ describe("Dialogue", () => {
             ask `How are you?`
         ], [{ type: 'expect', name: `I sound like` }]);
         const result = await dialogue.consume(mock.multimedia("audio", "recording.wav"), mock.apiRequest);
-        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: `I sound like` }]);
+        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I sound like` }]));
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Your voice is too high pitched` }),
             jasmine.objectContaining({ text: `What do you sound like?` }),
@@ -754,7 +754,7 @@ describe("Dialogue", () => {
         await dialogue.consume(mock.message('Amazing'), mock.apiRequest)
         jasmine.expect(storage.store).not.toHaveBeenCalledWith(jasmine.arrayContaining([{ type: 'complete' }]));
         const result = await dialogue.consume(mock.location(50, 1), mock.apiRequest);
-        jasmine.expect(storage.store).toHaveBeenCalledWith(jasmine.arrayContaining([{ type: 'complete' }]));
+        jasmine.expect(storage.store).toHaveBeenCalledWith((jasmine.stringMatching(JSON.stringify([{ type: 'complete' }]))));
         jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `But why?` })
         ]));
@@ -859,7 +859,7 @@ describe("Dialogue", () => {
         ], [{ type: 'expect', name: `I feel` }, { type: 'expect', name: `I feel that way because` }]);
         dialogue.setKeywordHandler('start over', 'restart')
         const result = await dialogue.consume(mock.message('Start over'), mock.apiRequest)
-        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: 'I feel' }]);
+        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: 'I feel' }]));
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `How are you?` })
         ]));
@@ -883,7 +883,7 @@ describe("Dialogue", () => {
         dialogue.setKeywordHandler('back', 'undo')
         const result = await dialogue.consume(mock.message('back'), mock.apiRequest)
         jasmine.expect(undoHandler).toHaveBeenCalledTimes(1);
-        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: `I feel` }]);
+        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I feel` }]));
         jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Don't repeat this on undo` })
         ]));
@@ -909,7 +909,7 @@ describe("Dialogue", () => {
         dialogue.setKeywordHandler('back', 'undo')
         const result = await dialogue.consume(mock.message('back'), mock.apiRequest)
         jasmine.expect(undoHandler).toHaveBeenCalledTimes(1);
-        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: `I feel that way because` }, { type: 'expect', name: `I feel` }]);
+        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I feel that way because` }, { type: 'expect', name: `I feel` }]));
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `But why?` })
         ]));
@@ -938,7 +938,7 @@ describe("Dialogue", () => {
         dialogue.setKeywordHandler('back', 'undo')
         const result = await dialogue.consume(mock.message('back'), mock.apiRequest)
         jasmine.expect(undoHandler).toHaveBeenCalledTimes(1);
-        jasmine.expect(storage.store).toHaveBeenCalledWith([{ type: 'expect', name: `I feel` }]);
+        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I feel` }]));
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `How are you?` })
         ]));
