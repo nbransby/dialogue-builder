@@ -1,3 +1,4 @@
+const emojiRegex = require('emoji-regex');
 import assert = require('assert');
 import { Request } from 'claudia-api-builder'
 import builder = require('claudia-bot-builder')
@@ -31,31 +32,25 @@ export type ResponseHandler = any
 // }
 
 const ordinals = ['first', 'second', 'third', 'forth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth']
-
-
 export class UnexpectedInputError {
     constructor(public message?: string, public repeatQuestion = true, public showQuickReplies = true) {}
 }
-
 class UndefinedHandlerError extends UnexpectedInputError {
     constructor(handler: ResponseHandler) {
         const keys = Object.getOwnPropertySymbols(handler).map(symbol => /Symbol\((.*)\)/.exec(symbol.toString())![1]).filter(k => k.length > 0);
         super(`Sorry, I didn't quite catch that${keys.length === 0 ? '' : `, I was expecting ${keys.join(' or ')}`}`)
     }
 }
-
 export class Directive {
     constructor(private readonly text: string) {}
     toString(): string {
         return this.text;
     }    
 }
-
 export type Label = String
 export class Expect extends Directive {}
 export class Goto extends Directive {}
 class Ask extends Text {}
-
 export type Script = Array<BaseTemplate | Label | Directive | ResponseHandler>
 export function say(template: TemplateStringsArray, ...substitutions: any[]): Text {
     return new Text(String.raw(template, ...substitutions).replace(/([\s]) +/g, '$1'));
@@ -81,7 +76,6 @@ export function image(template: TemplateStringsArray, ...substitutions: any[]): 
 export function file(template: TemplateStringsArray, ...substitutions: any[]): Attachment {
     return new Attachment(String.raw(template, ...substitutions), 'file');
 }
-
 export type ButtonHandler = { [title: string]: () =>  Goto | void}
 export interface Bubble {
     title: string, 
@@ -121,7 +115,6 @@ export function list(id: string, type: 'compact'|'large', bubbles: Bubble[], han
     });
     return list;
 }
-
 export function generic(id: string, type: 'horizontal'|'square', bubbles: Bubble[]): Generic {
     const generic = new Generic();
     generic.identifier = `generic '${id}'`;
@@ -141,7 +134,6 @@ export function generic(id: string, type: 'horizontal'|'square', bubbles: Bubble
     });
     return generic;
 }
-
 export function dialogue<T>(name: string, script: (...context: T[]) => Script): DialogueBuilder<T> {
     const builder = script as DialogueBuilder<T>;
     builder.dialogueName = name;
@@ -536,7 +528,9 @@ declare module "claudia-bot-builder" {
 
 BaseTemplate.prototype.getReadingDuration = () => 1000;
 Text.prototype.getReadingDuration = function(this: Text) { 
-    return this.template.text.match(/\w+/g)!.length * 250; 
+    const words = this.template.text.match(/\w+/g); 
+    const emojis = this.template.text.match(emojiRegex()); 
+    return (words ? words.length * 250 : 0) + (emojis ? Math.max(words ? 0 : 2000, emojis.length * 500) : 0);
 }
 
 BaseTemplate.prototype.setBaseUrl = function(this: List) { 
