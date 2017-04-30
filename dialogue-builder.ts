@@ -294,24 +294,25 @@ export class Dialogue<T> {
                     if(keys.length == 0) throw new UndefinedHandlerError(handler);
                     return handler[keys[0]] ? invoke(handler[keys[0]]) : undefined;
                 }
-                for(let attachment of message.originalRequest.message.attachments || []) {
+                let result;
+                for(const attachment of message.originalRequest.message.attachments || []) {
                     switch(attachment.type) {
                         case 'location':
                             const invoke = (m: Function) => m.call(handler, attachment.payload.coordinates!.lat, attachment.payload.coordinates!.long, attachment.payload.title, attachment.payload.url);
-                            return handle(handler, invoke, location, onLocation, defaultAction);
+                            result = handle(handler, invoke, location, onLocation, defaultAction);
                         case 'image':
-                            return handle(handler, m => m.call(handler, attachment.payload.url), onImage, defaultAction);
+                            result = handle(handler, m => m.call(handler, attachment.payload.url), onImage, defaultAction);
                         case 'audio':
-                            return handle(handler, m => m.call(handler, attachment.payload.url), onAudio, defaultAction);
+                            result = handle(handler, m => m.call(handler, attachment.payload.url), onAudio, defaultAction);
                         case 'video':
-                            return handle(handler, m => m.call(handler, attachment.payload.url), onVideo, defaultAction);
+                            result = handle(handler, m => m.call(handler, attachment.payload.url), onVideo, defaultAction);
                         case 'file':
-                            return handle(handler, m => m.call(handler, attachment.payload.url), onFile, defaultAction);
+                            result = handle(handler, m => m.call(handler, attachment.payload.url), onFile, defaultAction);
                         default:
                             throw new Error(`Unsupported attachment type '${attachment.type}'`)
                     }
                 }
-                return handle(handler, m => m.call(handler, message.text), message.text, onText, defaultAction);
+                return message.originalRequest.message.attachments ? result || handle(handler, m => m.call(handler, message.text), message.text, onText, defaultAction);
             },
             addQuickReplies(this: Processor, message, handler) {
                 //add quick replies if present
