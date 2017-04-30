@@ -193,10 +193,8 @@ declare module "dialogue-builder" {
 //     readonly [onLocation]?(lat: number, long: number, title?: string, url?: string): Goto | Expect | void | Promise<Goto | Expect | void>
 //     readonly [onImage]?(url: string): Goto | Expect | void;
 // }
-    export class UnexpectedInputError {
-        message: string;
-        repeatQuestion: boolean;
-        constructor(message?: string, repeatQuestion?: boolean,  showQuickReplies?: boolean);
+    export class UnexpectedInputError extends Error {
+        constructor(message?: string, repeatQuestion?: boolean, showQuickReplies?: boolean);
     }
     export type Label = String;
     export class Directive {

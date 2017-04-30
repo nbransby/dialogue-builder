@@ -17,11 +17,11 @@ export declare const onFile: symbol;
 export declare const defaultAction: symbol;
 export declare const onUndo: symbol;
 export declare type ResponseHandler = any;
-export declare class UnexpectedInputError {
-    message: string;
+export declare class UnexpectedInputError extends Error {
+    localizedMessage: string;
     repeatQuestion: boolean;
     showQuickReplies: boolean;
-    constructor(message?: string, repeatQuestion?: boolean, showQuickReplies?: boolean);
+    constructor(localizedMessage?: string, repeatQuestion?: boolean, showQuickReplies?: boolean);
 }
 export declare class Directive {
     private readonly text;

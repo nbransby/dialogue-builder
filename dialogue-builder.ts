@@ -32,8 +32,10 @@ export type ResponseHandler = any
 // }
 
 const ordinals = ['first', 'second', 'third', 'forth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth']
-export class UnexpectedInputError {
-    constructor(public message?: string, public repeatQuestion = true, public showQuickReplies = true) {}
+export class UnexpectedInputError extends Error {
+    constructor(public localizedMessage?: string, public repeatQuestion = true, public showQuickReplies = true) {
+        super(localizedMessage);
+    }
 }
 class UndefinedHandlerError extends UnexpectedInputError {
     constructor(handler: ResponseHandler) {
@@ -237,7 +239,7 @@ export class Dialogue<T> {
             } catch(e) {
                 if(!(e instanceof UnexpectedInputError)) throw e;
                 this.state.undo();
-                if(e.message) output.push(new Text(e.message));
+                if(e.localizedMessage) output.push(new Text(e.localizedMessage));
                 this.outputFilter = o => e.repeatQuestion ? o instanceof Ask : false;
                 showQuickReplies = e.showQuickReplies;
             }
