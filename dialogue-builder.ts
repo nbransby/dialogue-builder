@@ -300,19 +300,24 @@ export class Dialogue<T> {
                         case 'location':
                             const invoke = (m: Function) => m.call(handler, attachment.payload.coordinates!.lat, attachment.payload.coordinates!.long, attachment.payload.title, attachment.payload.url);
                             result = handle(handler, invoke, location, onLocation, defaultAction);
+                            break;
                         case 'image':
                             result = handle(handler, m => m.call(handler, attachment.payload.url), onImage, defaultAction);
+                            break;
                         case 'audio':
                             result = handle(handler, m => m.call(handler, attachment.payload.url), onAudio, defaultAction);
+                            break;
                         case 'video':
                             result = handle(handler, m => m.call(handler, attachment.payload.url), onVideo, defaultAction);
+                            break;
                         case 'file':
                             result = handle(handler, m => m.call(handler, attachment.payload.url), onFile, defaultAction);
+                            break;
                         default:
                             throw new Error(`Unsupported attachment type '${attachment.type}'`)
                     }
                 }
-                return message.originalRequest.message.attachments ? result || handle(handler, m => m.call(handler, message.text), message.text, onText, defaultAction);
+                return message.originalRequest.message.attachments ? result : handle(handler, m => m.call(handler, message.text), message.text, onText, defaultAction);
             },
             addQuickReplies(this: Processor, message, handler) {
                 //add quick replies if present
