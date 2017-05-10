@@ -83,6 +83,7 @@ declare module "claudia-bot-builder" {
             class Button extends BaseTemplate {
                 constructor(text: string)
                 addButton(title: string, value: string): this
+                addShareButton(shareContent?: string): this
             }
 
             class Receipt extends BaseTemplate {
@@ -124,7 +125,7 @@ declare module "claudia-bot-builder" {
                 addDefaultAction(url: string): this
                 addImage(url: string): this
                 addButton(title: string, value: string, type: string): this
-                addShareButton(): this
+                addShareButton(shareContent?: string): this
             }
 
             class ChatAction {
@@ -142,7 +143,14 @@ declare module "claudia-bot-builder" {
                 recipient: { id: string }
                 timestamp: number
                 message: Message
-                postback?: { payload: string }
+                postback?: { 
+                    payload: string 
+                    referral?: {
+                        ref: string,
+                        source: "SHORTLINK"|"ADS",
+                        type: "OPEN_THREAD"|string,
+                    }      
+                }
                 read?: { watermark: number, seq: number }
             }
 

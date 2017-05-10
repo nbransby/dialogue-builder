@@ -8,7 +8,7 @@
     "node": ">=6"
   },
   "dependencies": {
-    "claudia-bot-builder": "^2.14.1",
+    "claudia-bot-builder": "^2.15.0",
     "emoji-regex": "^6.4.2"
   },
   "devDependencies": {

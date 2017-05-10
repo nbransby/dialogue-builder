@@ -33,7 +33,7 @@ export type ResponseHandler = any
 
 const ordinals = ['first', 'second', 'third', 'forth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth']
 export class UnexpectedInputError extends Error {
-    constructor(public localizedMessage?: string, public repeatQuestion = true, public showQuickReplies = true) {
+    constructor(public localizedMessage: string = `Sorry, I didn't quite catch that`, public repeatQuestion = true, public showQuickReplies = true) {
         super(localizedMessage);
     }
 }
@@ -211,7 +211,7 @@ export class Dialogue<T> {
             this.state.undo();
             const handler = this.script[this.state.startLine - 1];
             handler && handler[onUndo] && handler[onUndo]();
-            this.state.undo();
+            this.state.repeat();
         }
         const h = handler === 'restart' ? () => this.state.restart() : handler === 'undo' ? undo : handler;
         keys.forEach(k => this.handlers.set(`keyword '${k.toLowerCase()}'`, h));
@@ -232,13 +232,13 @@ export class Dialogue<T> {
                 const processResponse = async (line: number): Promise<void> => {
                     const result = await processor.consumeResponse(this.script[line - 1]);
                     if(!(result instanceof Directive)) return;
-                    line = this.state.jump(result, `expect \`${this.script[line - 2].toString()}\``, false);
+                    line = this.state.jump(result, `expect \`${this.script[line - 2].toString()}\``);
                     result instanceof Expect && await processResponse(line);
                 }
                 await processResponse(line);
             } catch(e) {
                 if(!(e instanceof UnexpectedInputError)) throw e;
-                this.state.undo();
+                this.state.repeat();
                 if(e.localizedMessage) output.push(new Text(e.localizedMessage));
                 this.outputFilter = o => e.repeatQuestion ? o instanceof Ask : false;
                 showQuickReplies = e.showQuickReplies;
@@ -256,7 +256,7 @@ export class Dialogue<T> {
             if(element instanceof BaseTemplate) {
                 if(!this.outputFilter || this.outputFilter(element)) output.push(element);
             } else if(element instanceof Goto) {
-                i = this.state.jump(element, i) - 1
+                i = this.state.jump(element, i, true) - 1
             } else if(typeof element === 'string') {
                 //if element is a breaking label
                 if(element.startsWith('!')) break;
@@ -343,7 +343,7 @@ export class Dialogue<T> {
 }
 
 class State {
-    private state: Array<{ type: 'label'|'expect'|'complete', name?: string }>
+    private state: Array<{ type: 'label'|'expect'|'complete', name?: string, inline?: boolean }>
     private jumpCount = 0;
     constructor(private storage: Storage, private expects: Map<string, number>, private labels: Map<string, number>) {
     }
@@ -372,20 +372,20 @@ class State {
                 throw new Error(`Unexpected type ${this.state[0].type}`);
         }
     }
-    jump(location: Directive, lineOrIdentifier: number|string, persist = true): number {
+    jump(location: Directive, lineOrIdentifier: number|string, fromInlineGoto: boolean = false): number {
         assert(this.state);
         if(++this.jumpCount > 10) throw new Error(`Endless loop detected ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: ${location.constructor.name.toLowerCase()} \`${location.toString()}\``);
         if(location instanceof Expect) {
             const line = this.expects.get(location.toString())
             if(line === undefined) throw new Error(`Could not find expect referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: expect \`${location.toString()}\``);        
-            if(persist) this.state.unshift({ type: 'expect', name: location.toString() });    
-            return line+ 2 || 0;
+            this.state.unshift({ type: 'expect', name: location.toString() });    
+            return line + 2 || 0;
         }
         const label = location.toString().startsWith('!') ? location.toString().substring(1) : location.toString();
         if(!this.labels.has(label)) throw new Error(`Could not find label referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: goto \`${location.toString()}\``);        
         console.log(`Jumping to label '${label}' from ${typeof lineOrIdentifier == 'number' ? 'line' : ''} ${lineOrIdentifier}: goto \`${location.toString()}\``);
         if(this.isComplete) this.state.shift(); 
-        this.state.unshift({ type: 'label', name: label});
+        this.state.unshift({ type: 'label', name: label, inline: fromInlineGoto});
         return this.startLine;
     }
     async complete(expect?: Expect) {
@@ -396,6 +396,10 @@ class State {
     restart() {
         assert(this.state);
         this.state.length = 0;
+    }
+    repeat() {
+        assert(this.state);
+        this.state.splice(0, this.state.findIndex((_, i, s) => i+1 === this.state.length || s[i+1].type === 'expect' || !s[i+1].inline) + 1);                
     }
     undo() {
         assert(this.state);

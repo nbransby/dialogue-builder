@@ -11,7 +11,7 @@ import 'jasmine-promises'
 describe("Dialogue", () => {
     
     interface This {
-        build<T>(script: (context: T) => Script, state: Array<{ type: 'label'|'expect'|'complete', name?: string }>, storage?: Storage, context?: T): [Dialogue<T>, Storage]
+        build<T>(script: (context: T) => Script, state: Array<{ type: 'label'|'expect'|'complete', name?: string, inline?: boolean }>, storage?: Storage, context?: T): [Dialogue<T>, Storage]
     }
 
     beforeEach(function(this: This) {
@@ -760,6 +760,27 @@ describe("Dialogue", () => {
         ]));
     });
 
+    it("resumes from the correct line when on unexpected input when a goto skips another goto", async function(this: This) {
+        const [dialogue, storage] = this.build(() => [
+            'start',
+            ask `How are you?`,
+            expect `I feel`, {
+                'Amazing': () => goto `label`
+            },
+            goto `start`,
+            'label',
+            ask `Where are you?`, 
+            expect `I am at`, {
+                [location]: null
+            }
+        ], [{ type: 'expect', name: `I am at`}, { type: 'label', name: `label`, inline: false }, { type: 'expect', name: `I feel` }]);
+        const result = await dialogue.consume(mock.message('Wrong input'), mock.apiRequest)
+        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I am at`}, { type: 'label', name: `label`, inline: false }, { type: 'expect', name: `I feel` }]));
+        jasmine.expect(result).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: `Where are you?` })
+        ]));
+    });
+
     it("supports expects returned from response handlers to delegate handling", async function(this: This) {
         const handler = jasmine.createSpyObj('response', ['onText'])
         const [dialogue] = this.build(() => [
@@ -776,7 +797,7 @@ describe("Dialogue", () => {
         const result = await dialogue.consume(mock.message('Amazing'), mock.apiRequest);
         jasmine.expect(handler.onText).toHaveBeenCalledWith('Amazing');    
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: 'But why?' }), 
+            jasmine.objectContaining({ text: 'Goodbye' }), 
         ]));
     });
 
