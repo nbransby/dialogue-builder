@@ -33,17 +33,20 @@ export declare class Expect extends Directive {
 }
 export declare class Goto extends Directive {
 }
+export declare class Rollback extends Goto {
+}
 export declare type Script = Array<BaseTemplate | Label | Directive | ResponseHandler>;
 export declare function say(template: TemplateStringsArray, ...substitutions: any[]): Text;
 export declare function ask(template: TemplateStringsArray, ...substitutions: any[]): Text;
 export declare function expect(template: TemplateStringsArray, ...substitutions: any[]): Expect;
 export declare function goto(template: TemplateStringsArray, ...substitutions: any[]): Goto;
+export declare function rollback(template: TemplateStringsArray, ...substitutions: any[]): Rollback;
 export declare function audio(template: TemplateStringsArray, ...substitutions: any[]): Attachment;
 export declare function video(template: TemplateStringsArray, ...substitutions: any[]): Attachment;
 export declare function image(template: TemplateStringsArray, ...substitutions: any[]): Attachment;
 export declare function file(template: TemplateStringsArray, ...substitutions: any[]): Attachment;
 export declare type ButtonHandler = {
-    [title: string]: () => Goto | void;
+    [title: string]: () => Goto | void | Promise<Goto | void>;
 };
 export interface Bubble {
     title: string;
@@ -72,7 +75,7 @@ export declare class Dialogue<T> {
     baseUrl: string;
     constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]);
     execute(directive: Directive): Promise<void>;
-    setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void;
+    setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto | Promise<void | Goto>)): void;
     private process(message, processor);
     consume(message: Message, apiRequest: Request): Promise<any[]>;
 }
@@ -88,7 +91,7 @@ declare module "claudia-bot-builder" {
         interface BaseTemplate {
             getReadingDuration: () => number;
             setBaseUrl: (url: string) => this;
-            postbacks?: [string, () => Goto | void][];
+            postbacks?: [string, () => Goto | void | Promise<Goto | void>][];
             identifier?: string;
         }
         interface Text {

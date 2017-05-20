@@ -52,6 +52,7 @@ export class Directive {
 export type Label = String
 export class Expect extends Directive {}
 export class Goto extends Directive {}
+export class Rollback extends Goto {}
 class Ask extends Text {}
 export type Script = Array<BaseTemplate | Label | Directive | ResponseHandler>
 export function say(template: TemplateStringsArray, ...substitutions: any[]): Text {
@@ -66,6 +67,10 @@ export function expect(template: TemplateStringsArray, ...substitutions: any[]):
 export function goto(template: TemplateStringsArray, ...substitutions: any[]): Goto {
     return new Goto(String.raw(template, ...substitutions));
 }
+
+export function rollback(template: TemplateStringsArray, ...substitutions: any[]): Rollback {
+    return new Rollback(String.raw(template, ...substitutions));
+}
 export function audio(template: TemplateStringsArray, ...substitutions: any[]): Attachment {
     return new Attachment(String.raw(template, ...substitutions), 'audio');
 }
@@ -78,7 +83,7 @@ export function image(template: TemplateStringsArray, ...substitutions: any[]): 
 export function file(template: TemplateStringsArray, ...substitutions: any[]): Attachment {
     return new Attachment(String.raw(template, ...substitutions), 'file');
 }
-export type ButtonHandler = { [title: string]: () =>  Goto | void}
+export type ButtonHandler = { [title: string]: () =>  Goto | void | Promise<Goto | void> }
 export interface Bubble {
     title: string, 
     subtitle?: string, 
@@ -150,8 +155,8 @@ export interface Storage {
     retrieve(): string | undefined | Promise<string | undefined>
 }
 interface Processor { 
-    consumePostback(identifier: string): boolean
-    consumeKeyword(keyword: string): boolean 
+    consumePostback(identifier: string): Promise<boolean>
+    consumeKeyword(keyword: string): Promise<boolean>
     consumeResponse(handler: ResponseHandler): Promise<void | Goto | Expect>, 
     addQuickReplies(message: BaseTemplate, handler: ResponseHandler): void
     insertPauses(output: BaseTemplate[]): Array<{ get(): string}>
@@ -159,7 +164,7 @@ interface Processor {
 export class Dialogue<T> {
     private readonly build: () => void
     private readonly state: State
-    private readonly handlers: Map<string, () =>  void | Goto>
+    private readonly handlers: Map<string, () =>  void | Goto | Promise<Goto | void>>
     private script: Script
     private outputFilter: (o: BaseTemplate) => boolean
     public baseUrl: string
@@ -170,7 +175,7 @@ export class Dialogue<T> {
         const templates = new Set();
         const labels = new Map();
         const expects = new Map();
-        const gotos: {line: number, label: string}[] = [];
+        const jumps: {line: number, label: string, type: 'goto'|'rollback'}[] = [];
         for(let line = 0; line < this.script.length; line++) {
             const value = this.script[line];
             if(value instanceof Expect) {
@@ -184,7 +189,7 @@ export class Dialogue<T> {
                 if(labels.has(label)) throw new Error(`Duplicate label found on line ${line}: '${value}'`);
                 labels.set(label, line);   
             } else if(value instanceof Goto) {
-                gotos.push({line: line, label: value.toString()});
+                jumps.push({line: line, label: value.toString(), type: value instanceof Rollback ? 'rollback' : 'goto'});
             } else if(value instanceof BaseTemplate) {
                 if(templates.has(value.identifier)) throw new Error(`Duplicate identifier found on line ${line} for ${value.identifier}`);
                 if(value.identifier) templates.add(value.identifier);
@@ -194,8 +199,8 @@ export class Dialogue<T> {
             }
         }
         if(labels.size == this.script.length) throw new Error('Dialogue cannot be empty');
-        const goto = gotos.find(g => !labels.has(g.label));
-        if(goto) new Error(`Could not find label referenced on line ${goto.line}: goto \`${goto.label}\``);
+        const jump = jumps.find(g => !labels.has(g.label));
+        if(jump) new Error(`Could not find label referenced on line ${jump.line}: ${jump.type} \`${jump.label}\``);
         this.state = new State(storage, expects, labels);
     }
 
@@ -204,7 +209,7 @@ export class Dialogue<T> {
         this.state.jump(directive, `Dialogue.execute(${directive.constructor.name.toLowerCase()} \`${directive.toString()}\`)`)
     }
 
-    setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)) {
+    setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto | Promise<void | Goto>)) {
         const keys = keywords instanceof Array ? keywords : [keywords];
         const undo = () => { 
             this.outputFilter = o => o instanceof Ask; 
@@ -224,9 +229,9 @@ export class Dialogue<T> {
         const output: Array<BaseTemplate> = []
         if(message.originalRequest.postback) {
             const payload = message.originalRequest.postback.payload;
-            processor.consumePostback(payload) || processor.consumeKeyword(payload) 
+            await processor.consumePostback(payload) || await processor.consumeKeyword(payload) 
                 || console.log(`Postback received with unknown payload '${payload}'`);
-        } else if(!processor.consumeKeyword(message.text)) {
+        } else if(!await processor.consumeKeyword(message.text)) {
             const line = this.state.startLine;
             if(line > 0) try {
                 const processResponse = async (line: number): Promise<void> => {
@@ -278,10 +283,10 @@ export class Dialogue<T> {
             consumeKeyword(this: Processor, keyword) {
                 return this.consumePostback(`keyword '${keyword.toLowerCase()}'`);
             }, 
-            consumePostback: identifier => {
+            consumePostback: async identifier => {
                 const handler = this.handlers.get(identifier);
                 if(!handler) return false;
-                const goto = handler();
+                const goto = await handler();
                 goto instanceof Goto && this.state.jump(goto, identifier);
                 return true;                            
             },
@@ -382,8 +387,12 @@ class State {
             return line + 2 || 0;
         }
         const label = location.toString().startsWith('!') ? location.toString().substring(1) : location.toString();
-        if(!this.labels.has(label)) throw new Error(`Could not find label referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: goto \`${location.toString()}\``);        
-        console.log(`Jumping to label '${label}' from ${typeof lineOrIdentifier == 'number' ? 'line' : ''} ${lineOrIdentifier}: goto \`${location.toString()}\``);
+        if(!this.labels.has(label)) throw new Error(`Could not find label referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: ${location instanceof Rollback ? 'rollback' : 'goto'} \`${location.toString()}\``);        
+        console.log(`${location instanceof Rollback ? 'Rolling back past' : 'Jumping to'} label '${label}' from ${typeof lineOrIdentifier == 'number' ? 'line' : ''} ${lineOrIdentifier}: ${location instanceof Rollback ? 'rollback' : 'goto'} \`${location.toString()}\``);
+        if(location instanceof Rollback) {
+            this.state.splice(0, this.state.findIndex(s => s.type === 'label' && s.name === location.toString()) + 1);                
+            return this.startLine;
+        }        
         if(this.isComplete) this.state.shift(); 
         this.state.unshift({ type: 'label', name: label, inline: fromInlineGoto});
         return this.startLine;
@@ -526,7 +535,7 @@ declare module "claudia-bot-builder" {
         interface BaseTemplate {
             getReadingDuration: () => number
             setBaseUrl: (url: string) => this
-            postbacks?: [string, () => Goto | void][]
+            postbacks?: [string, () => Goto | void | Promise<Goto | void>][]
             identifier?: string
         }
         interface Text {

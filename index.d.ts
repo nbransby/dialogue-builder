@@ -214,6 +214,8 @@ declare module "dialogue-builder" {
     }
     export class Goto extends Directive {
     }
+    export class Rollback extends Goto {
+    }
     export class Say extends Text {
     }
     export type Script = Array<FacebookTemplate | Label | Directive | ResponseHandler>;
@@ -221,12 +223,13 @@ declare module "dialogue-builder" {
     export function ask(template: TemplateStringsArray, ...substitutions: string[]): Text;
     export function expect(template: TemplateStringsArray, ...substitutions: string[]): Expect;
     export function goto(template: TemplateStringsArray, ...substitutions: string[]): Goto;
+    export function rollback(template: TemplateStringsArray, ...substitutions: any[]): Rollback;
     export function audio(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
     export function video(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
     export function image(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
     export function file(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
     export  type ButtonHandler = {
-        [title: string]: () => Goto | void;
+        [title: string]: () => Goto | void | Promise<Goto | void>;
     };
     export interface Bubble {
         title: string;
@@ -254,7 +257,7 @@ declare module "dialogue-builder" {
         baseUrl: string;
         constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]);
         execute(directive: Directive): void;
-        setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto)): void;
+        setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto | Promise<void | Goto>)): void;
         private process(dialogue, processor);
         private static handle<T>(handler, invoke, ...keys);
         consume(message: Message, apiRequest: Request, onComplete?: () => void): Promise<any[]>;
