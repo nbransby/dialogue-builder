@@ -6,5 +6,14 @@
     "isShellCommand": true,
     "args": ["-p", "${workspaceRoot}"],
     "showOutput": "silent",
-    "problemMatcher": "$tsc"
+    "problemMatcher": "$tsc",
+    "echoCommand": true,
+    "tasks": [
+        {
+            "suppressTaskName": true,
+            "taskName": "build",
+            "showOutput": "silent",
+            "isBuildCommand": true
+        }
+    ]
 }

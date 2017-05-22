@@ -1,5 +1,5 @@
 
-import { Dialogue, dialogue, Storage, Script, goto, say, ask, expect, onText, location, onLocation, onFile, onAudio, onImage, onVideo, image, audio, buttons, list, defaultAction, UnexpectedInputError, mock, onUndo } from './dialogue-builder'
+import { Dialogue, dialogue, Storage, Script, goto, rollback, say, ask, expect, onText, location, onLocation, onFile, onAudio, onImage, onVideo, image, audio, buttons, list, defaultAction, UnexpectedInputError, mock, onUndo } from './dialogue-builder'
 import { fbTemplate } from 'claudia-bot-builder'
 
 Object.defineProperty(global, 'jasmineRequire', {
@@ -634,6 +634,74 @@ describe("Dialogue", () => {
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: 'Hi!' }), 
             jasmine.objectContaining({ text: `How are you?` })
+        ]));
+        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: `Don't say this` })
+        ]));
+    });
+
+    it("respects rollback to start of script", async function(this: This) {
+        const button = buttons('some buttons', 'Some buttons', { 'Run': () => goto `subroutine` });
+        const [dialogue, storage] = this.build(() => [
+            say `Hi!`,
+            '!subroutine',
+            say `Running subroutine`,
+            rollback `subroutine`,
+            say `Don't say this`,
+            button,
+        ], []);
+        const result = await dialogue.consume(mock.postback(button.postbacks![0][0]), mock.apiRequest);
+        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}]));
+        jasmine.expect(result).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: 'Running subroutine' }), 
+            jasmine.objectContaining({ text: 'Hi!' }), 
+        ]));
+        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: `Don't say this` })
+        ]));
+    });
+
+    it("respects rollback to previous label", async function(this: This) {
+        const button = buttons('some buttons', 'Some buttons', { 'Run': () => goto `subroutine` });
+        const [dialogue, storage] = this.build(() => [
+            say `Don't say this`,
+            '!subroutine',
+            say `Running subroutine`,
+            rollback `subroutine`,
+            button,
+            'previous_label',
+            say `Hi!`,
+        ], [{ type: 'label', name: 'previous_label'}]);
+        const result = await dialogue.consume(mock.postback(button.postbacks![0][0]), mock.apiRequest);
+        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'label', name: 'previous_label'}]));
+        jasmine.expect(result).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: 'Running subroutine' }), 
+            jasmine.objectContaining({ text: 'Hi!' }), 
+        ]));
+        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: `Don't say this` })
+        ]));
+    });
+
+    it("respects rollback to previous expect", async function(this: This) {
+        const button = buttons('some buttons', 'Some buttons', { 'Run': () => goto `subroutine` });
+        const [dialogue, storage] = this.build(() => [
+            say `Don't say this`,
+            '!subroutine',
+            say `Running subroutine`,
+            rollback `subroutine`,
+            button,
+            say `How do you feel?`,
+            expect `I feel`, {
+                'Amazing': () => goto `label`
+            },
+            say `Goodbye!`,
+        ], [{ type: 'expect', name: 'I feel'}]);
+        const result = await dialogue.consume(mock.postback(button.postbacks![0][0]), mock.apiRequest);
+        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'expect', name: 'I feel'}]));
+        jasmine.expect(result).toEqual(jasmine.arrayContaining([
+            jasmine.objectContaining({ text: 'Running subroutine' }), 
+            jasmine.objectContaining({ text: 'Goodbye!' }), 
         ]));
         jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Don't say this` })
