@@ -27,6 +27,7 @@ export declare class Directive {
     private readonly text;
     constructor(text: string);
     toString(): string;
+    static assertEqual(a: Directive | undefined, b: Directive | undefined): void;
 }
 export declare type Label = String;
 export declare class Expect extends Directive {
@@ -80,11 +81,14 @@ export declare class Dialogue<T> {
     consume(message: Message, apiRequest: Request): Promise<any[]>;
 }
 export declare namespace mock {
+    const sender: {
+        id: string;
+    };
     const apiRequest: Request;
     function message(text: string): Message;
-    function postback(payload?: string): Message;
+    function postback(payload?: string, text?: string): Message;
     function location(lat: number, long: number, title?: string, url?: string): Message;
-    function multimedia(type: 'image' | 'audio' | 'video' | 'file' | 'location', url: string): Message;
+    function multimedia(type: 'image' | 'audio' | 'video' | 'file' | 'location', urls: string | string[], text?: string): Message;
 }
 declare module "claudia-bot-builder" {
     namespace fbTemplate {

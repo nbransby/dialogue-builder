@@ -30,7 +30,7 @@ declare module "claudia-bot-builder" {
 
     import { Request } from 'claudia-api-builder'
 
-    function builder(callback: builder.Callback, options?: builder.Options): void;
+    function builder(callback: builder.Callback, options?: builder.Options, optionalLogError?: (e: Error) => void): any;
 
     namespace builder {
         type Callback = (message: Message, originalApiRequest: Request) => string | string[] | Promise<string | string[]>
@@ -263,10 +263,11 @@ declare module "dialogue-builder" {
         consume(message: Message, apiRequest: Request, onComplete?: () => void): Promise<any[]>;
     }
     export namespace mock {
+        const sender: { id: string };
         const apiRequest: Request;
         function message(text: string): Message;
-        function postback(payload?: string): Message;
+        function postback(payload?: string, text?: string): Message;
         function location(lat: number, long: number, title?: string, url?: string): Message;
-        function multimedia(type: 'image' | 'audio' | 'video' | 'file' | 'location', url: string): Message;
+        function multimedia(type: 'image'|'audio'|'video'|'file'|'location', urls: string | string[], text?: string): Message;
     }
 }

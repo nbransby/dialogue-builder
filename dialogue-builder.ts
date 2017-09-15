@@ -48,6 +48,10 @@ export class Directive {
     toString(): string {
         return this.text;
     }    
+
+    static assertEqual(a: Directive | undefined, b: Directive | undefined) {
+        if (a && b && (Object.getPrototypeOf(a) != Object.getPrototypeOf(b) || a.text != b.text)) throw new Error('Opposing directives given')
+    }
 }
 export type Label = String
 export class Expect extends Directive {}
@@ -322,7 +326,8 @@ export class Dialogue<T> {
                             throw new Error(`Unsupported attachment type '${attachment.type}'`)
                     }
                 }
-                return results.length ? Promise.all(results).then(r => r.pop()) : handle(handler, m => m.call(handler, message.text), message.text, onText, defaultAction);
+                return results.length ? Promise.all(results).then(r => r.reduce((p, c) => Directive.assertEqual(p, c) || p || c)) : 
+                    handle(handler, m => m.call(handler, message.text), message.text, onText, defaultAction);
             },
             addQuickReplies(this: Processor, message, handler) {
                 //add quick replies if present
@@ -417,7 +422,9 @@ class State {
 }
 
 export namespace mock {
-
+    export const sender = {
+        id: 'user'
+    }
     export const apiRequest: Request = {
         queryString: {},
         env: {},
@@ -436,10 +443,10 @@ export namespace mock {
         return {
             postback: false, 
             text: text, 
-            sender: "user", 
+            sender: sender.id, 
             type: 'facebook', 
             originalRequest: { 
-                sender: { id: "user" }, 
+                sender: sender, 
                 recipient: { id: "bot" }, 
                 timestamp: 0, 
                 message: { 
@@ -451,20 +458,20 @@ export namespace mock {
         }
     }
         
-    export function postback(payload: string = 'USER_DEFINED_PAYLOAD'): Message {
+    export function postback(payload: string = 'USER_DEFINED_PAYLOAD', text: string = ''): Message {
         return {
             postback: true, 
-            text: '', 
-            sender: "user", 
+            text: text, 
+            sender: sender.id, 
             type: 'facebook', 
             originalRequest: { 
-                sender: { id: "user" }, 
+                sender: sender, 
                 recipient: { id: "bot" }, 
                 timestamp: 0, 
                 message: { 
                     mid: "1", 
                     seq: 1, 
-                    text: "" 
+                    text: text 
                 },
                 postback: {
                     payload: payload
@@ -476,17 +483,17 @@ export namespace mock {
     export function location(lat: number, long: number, title?: string, url?: string): Message { 
         return {
             postback: false, 
-            text: "", 
-            sender: "user", 
+            text: title || "", 
+            sender: sender.id, 
             type: 'facebook', 
             originalRequest: { 
-                sender: { id: "user" }, 
+                sender: sender, 
                 recipient: { id: "bot" }, 
                 timestamp: 0, 
                 message: { 
                     mid: "1", 
                     seq: 1, 
-                    text: "",
+                    text: title || "",
                     attachments: [{
                         type: "location",
                         payload: {
@@ -503,27 +510,26 @@ export namespace mock {
         }
     }
 
-    export function multimedia(type: 'image'|'audio'|'video'|'file'|'location', url: string): Message { 
+    export function multimedia(type: 'image'|'audio'|'video'|'file'|'location', urls: string | string[], text = ''): Message {
         return {
             postback: false, 
-            text: "", 
-            sender: "user", 
+            text: text, 
+            sender: sender.id, 
             type: 'facebook', 
             originalRequest: { 
-                sender: { id: "user" }, 
+                sender: sender, 
                 recipient: { id: "bot" }, 
                 timestamp: 0, 
                 message: { 
                     mid: "1", 
                     seq: 1, 
-                    text: "",
-                    attachments: [{
+                    text: text,
+                    attachments: (typeof urls == 'string' ? [urls] : urls).map(url => ({
                         type: type,
                         payload: {
                             url: url,
                         }
-                    }]
-
+                    }))
                 } 
             }
         }
