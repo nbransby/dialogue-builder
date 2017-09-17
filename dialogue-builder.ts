@@ -44,13 +44,31 @@ class UndefinedHandlerError extends UnexpectedInputError {
     }
 }
 export class Directive {
-    constructor(private readonly text: string) {}
+    private _script: string | undefined
+    readonly name: string
+    constructor(private text: string) {
+        const index = text.indexOf('::');
+        if(index < 0) {
+            this.name = text;
+        } else {
+            this._script = text.substring(0, index);
+            this.name = text.substring(index + 2);
+        }
+    }
+    get script(): string {
+        return this._script!;
+    }
+    set script(value) {
+        this._script = this._script || value;
+    }
+    get path(): string {
+        return `${this.script}::${this.name}`        
+    }
     toString(): string {
         return this.text;
     }    
-
     static assertEqual(a: Directive | undefined, b: Directive | undefined) {
-        if (a && b && (Object.getPrototypeOf(a) != Object.getPrototypeOf(b) || a.text != b.text)) throw new Error('Opposing directives given')
+        if (a && b && (Object.getPrototypeOf(a) != Object.getPrototypeOf(b) || a.script != b.script || a.name != b.name)) throw new Error('Opposing directives given')
     }
 }
 export type Label = String
@@ -154,9 +172,10 @@ export interface DialogueBuilder<T> {
     (...context: T[]): Script
     dialogueName: string
 }
-export interface Storage {
-    store(state: string): any | Promise<any>
-    retrieve(): string | undefined | Promise<string | undefined>
+export interface Delegate<T> {
+    loadScript(name: string): (...context: T[]) => Script
+    loadState(): string | undefined | Promise<string | undefined>
+    saveState(state: string): any | Promise<any>
 }
 interface Processor { 
     consumePostback(identifier: string): Promise<boolean>
@@ -166,51 +185,63 @@ interface Processor {
     insertPauses(output: BaseTemplate[]): Array<{ get(): string}>
 }
 export class Dialogue<T> {
-    private readonly build: () => void
+    private readonly handlers: Map<string, () =>  void | Goto | Promise<Goto | void>> = new Map();
     private readonly state: State
-    private readonly handlers: Map<string, () =>  void | Goto | Promise<Goto | void>>
     private script: Script
     private outputFilter: (o: BaseTemplate) => boolean
     public baseUrl: string
-    constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]) {
-        this.build = () => this.script = builder(...context);
-        this.build();
-        this.handlers = new Map();
-        const templates = new Set();
+    constructor(defaultScript: string, delegate: Delegate<T>, ...context: T[]) {
         const labels = new Map();
         const expects = new Map();
-        const jumps: {line: number, label: string, type: 'goto'|'rollback'}[] = [];
-        for(let line = 0; line < this.script.length; line++) {
-            const value = this.script[line];
-            if(value instanceof Expect) {
-                if(expects.has(value.toString())) throw new Error(`Duplicate expect statement found on line ${line}: expect \`${value}\``);
-                expects.set(value.toString(), line);   
-                const handler = this.script[++line];
-                if(!handler || handler instanceof Directive|| handler instanceof BaseTemplate) throw new Error(`Expect statement must be followed by a response handler on line ${line}: expect \`${value}\``);
-                if(handler.hasOwnProperty(location) && handler.hasOwnProperty(onLocation)) throw new Error(`Both location and onLocation implemented in the same response handler on line ${line}: expect \`${value}\``);
-            } else if(typeof value === 'string') {
-                const label = value.startsWith('!') ? value.substring(1) : value;
-                if(labels.has(label)) throw new Error(`Duplicate label found on line ${line}: '${value}'`);
-                labels.set(label, line);   
-            } else if(value instanceof Goto) {
-                jumps.push({line: line, label: value.toString(), type: value instanceof Rollback ? 'rollback' : 'goto'});
-            } else if(value instanceof BaseTemplate) {
-                if(templates.has(value.identifier)) throw new Error(`Duplicate identifier found on line ${line} for ${value.identifier}`);
-                if(value.identifier) templates.add(value.identifier);
-                (value.postbacks || []).forEach(p => this.handlers.set(p[0], p[1]));
-            } else if(value !== null) {
-                throw new Error(`Response handler must be preceded by an expect statement on line ${line}`)
+        const jumps: [number, Goto][] = [];        
+        const loaders = new Map<string, () => Script>();
+        const self = this;
+        this.state = new State(labels, expects, {
+            loadState: delegate.loadState,
+            saveState: delegate.saveState,
+            loadScript: name => loaders.get(name || defaultScript) || function(this: () => Script) {
+                name = name || defaultScript;
+                //update script every call
+                self.script = delegate.loadScript(name)(...context);
+                if(loaders.has(name)) return self.script;
+                //but only run checks once
+                loaders.set(name || defaultScript, this);
+                const templates = new Set();
+                for(let line = 0; line < self.script.length; line++) {
+                    let value = self.script[line];
+                    if(value instanceof Expect) {
+                        value.script = name;
+                        if(expects.has(value.path)) throw new Error(`Duplicate expect statement (${name}:${line}): expect \`${value}\``);
+                        expects.set(value.path, line);   
+                        const handler = self.script[++line];
+                        if(!handler || handler instanceof Directive|| handler instanceof BaseTemplate) throw new Error(`Expect statement must be followed by a response handler (${name}:${line}): expect \`${value}\``);
+                        if(handler.hasOwnProperty(location) && handler.hasOwnProperty(onLocation)) throw new Error(`Both location and onLocation implemented in the same response handler (${name}:${line}): expect \`${value}\``);
+                    } else if(typeof value === 'string') {
+                        const label = value.startsWith('!') ? value.substring(1) : value;
+                        if(labels.has(`${name}::${label}`)) throw new Error(`Duplicate label found (${name}:${line}): '${value}'`);
+                        labels.set(`${name}${label}`, line);   
+                    } else if(value instanceof Goto) {
+                        value.script = name;
+                        jumps.push([line, value]);
+                    } else if(value instanceof BaseTemplate) {
+                        if(templates.has(`${name}::${value.identifier}`)) throw new Error(`Duplicate identifier found (${name}:${line}): ${value.identifier}`);
+                        if(value.identifier) templates.add(`${name}::${value.identifier}`);
+                        (value.postbacks || []).forEach(p => self.handlers.set(`${name}::${p[0]}`, p[1]));
+                    } else if(value !== null) {
+                        throw new Error(`Response handler must be preceded by an expect statement (${name}:${line})`)
+                    }
+                }
+                if(labels.size == self.script.length) throw new Error('Dialogue cannot be empty');
+                const jump = jumps.find(j => !labels.has(j[1].path) && loaders.has(j[1].script));
+                if(jump) new Error(`Could not find label (${jump[1].script}:${jump[0]}): ${jump[1].constructor.name.toLowerCase()} \`${jump[1]}\``);
+                return self.script;
             }
-        }
-        if(labels.size == this.script.length) throw new Error('Dialogue cannot be empty');
-        const jump = jumps.find(g => !labels.has(g.label));
-        if(jump) new Error(`Could not find label referenced on line ${jump.line}: ${jump.type} \`${jump.label}\``);
-        this.state = new State(storage, expects, labels);
+        });
     }
 
     async execute(directive: Directive) {
         await this.state.retrieveState();
-        this.state.jump(directive, `Dialogue.execute(${directive.constructor.name.toLowerCase()} \`${directive.toString()}\`)`)
+        this.state.jump(directive, `Dialogue.execute(${directive.constructor.name.toLowerCase()} \`${directive}\`)`)
     }
 
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto | Promise<void | Goto>)) {
@@ -253,11 +284,7 @@ export class Dialogue<T> {
                 showQuickReplies = e.showQuickReplies;
             }
         }
-        if(this.state.isComplete) {
-            throw [];
-        }
-        //update script
-        this.build();
+        if(this.state.isComplete) throw [];
         //gather output
         for(let i = this.state.startLine; i < this.script.length; i++) {
             const element = this.script[i];
@@ -353,13 +380,12 @@ export class Dialogue<T> {
 }
 
 class State {
-    private state: Array<{ type: 'label'|'expect'|'complete', name?: string, inline?: boolean }>
-    private jumpCount = 0;
-    constructor(private storage: Storage, private expects: Map<string, number>, private labels: Map<string, number>) {
-    }
+    private state: Array<{ type: 'label'|'expect'|'complete', path?: string, inline?: boolean }>
+    private jumpCount = 0
+    constructor(private expects: Map<string, number>, private labels: Map<string, number>, private delegate: Delegate<void>) {}
     async retrieveState() {
         if(!this.state) {
-            const json = await this.storage.retrieve()
+            const json = await this.delegate.loadState();
             this.state = typeof json === 'string' ? JSON.parse(json) : [];
         }
     }
@@ -369,43 +395,46 @@ class State {
     }
     get startLine(): number {
         assert(this.state);
+        const path = this.state[0].path!;
         switch(this.state[0] && this.state[0].type) {
+            case undefined:
+                this.delegate.loadScript('');
+                return 0;
             case 'expect': 
-                return this.expects.get(this.state[0].name!)! + 2 || 0;
+                this.delegate.loadScript(path.substr(0, path.indexOf('::')));
+                return this.expects.get(path)! + 2 || 0;
             case 'label': 
-                return this.labels.get(this.state[0].name!)! + 1 || 0;
+                this.delegate.loadScript(path.substr(0, path.indexOf('::')));
+                return this.labels.get(path)! + 1 || 0;
             case 'complete':
                 return -1;
-            case undefined:
-                return 0;
             default: 
                 throw new Error(`Unexpected type ${this.state[0].type}`);
         }
     }
     jump(location: Directive, lineOrIdentifier: number|string, fromInlineGoto: boolean = false): number {
         assert(this.state);
-        if(++this.jumpCount > 10) throw new Error(`Endless loop detected ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: ${location.constructor.name.toLowerCase()} \`${location.toString()}\``);
+        if(++this.jumpCount > 10) throw new Error(`Endless loop detected ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: ${location.constructor.name.toLowerCase()} \`${location}\``);
         if(location instanceof Expect) {
-            const line = this.expects.get(location.toString())
-            if(line === undefined) throw new Error(`Could not find expect referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: expect \`${location.toString()}\``);        
-            this.state.unshift({ type: 'expect', name: location.toString() });    
+            const line = this.expects.get(location.path);
+            if(line === undefined) throw new Error(`Could not find expect referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: expect \`${location}\``);        
+            this.state.unshift({ type: 'expect', path: location.path });    
             return line + 2 || 0;
         }
-        const label = location.toString().startsWith('!') ? location.toString().substring(1) : location.toString();
-        if(!this.labels.has(label)) throw new Error(`Could not find label referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: ${location instanceof Rollback ? 'rollback' : 'goto'} \`${location.toString()}\``);        
-        console.log(`${location instanceof Rollback ? 'Rolling back past' : 'Jumping to'} label '${label}' from ${typeof lineOrIdentifier == 'number' ? 'line' : ''} ${lineOrIdentifier}: ${location instanceof Rollback ? 'rollback' : 'goto'} \`${location.toString()}\``);
+        if(!this.labels.has(location.path)) throw new Error(`Could not find label referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: ${location instanceof Rollback ? 'rollback' : 'goto'} \`${location}\``);        
+        console.log(`${location instanceof Rollback ? 'Rolling back past' : 'Jumping to'} label '${location.name}' from ${typeof lineOrIdentifier == 'number' ? 'line' : ''} ${lineOrIdentifier}: ${location.constructor.toString().toLowerCase()} \`${location}\``);
         if(location instanceof Rollback) {
-            this.state.splice(0, this.state.findIndex(s => s.type === 'label' && s.name === location.toString()) + 1);                
+            this.state.splice(0, this.state.findIndex(s => s.type === 'label' && s.path === location.path) + 1);                
             return this.startLine;
         }        
         if(this.isComplete) this.state.shift(); 
-        this.state.unshift({ type: 'label', name: label, inline: fromInlineGoto});
+        this.state.unshift({ type: 'label', path: location.path, inline: fromInlineGoto});
         return this.startLine;
     }
     async complete(expect?: Expect) {
         assert(this.state);
-        this.state.unshift(expect ? { type: 'expect', name: expect.toString()} : { type: 'complete'});
-        await this.storage.store(JSON.stringify(this.state));
+        this.state.unshift(expect ? { type: 'expect', path: expect.path} : { type: 'complete'});
+        await this.delegate.saveState(JSON.stringify(this.state));
     }    
     restart() {
         assert(this.state);

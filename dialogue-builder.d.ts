@@ -24,8 +24,12 @@ export declare class UnexpectedInputError extends Error {
     constructor(localizedMessage?: string, repeatQuestion?: boolean, showQuickReplies?: boolean);
 }
 export declare class Directive {
-    private readonly text;
+    private text;
+    private _script;
+    readonly name: string;
     constructor(text: string);
+    script: string;
+    readonly path: string;
     toString(): string;
     static assertEqual(a: Directive | undefined, b: Directive | undefined): void;
 }
@@ -63,18 +67,18 @@ export interface DialogueBuilder<T> {
     (...context: T[]): Script;
     dialogueName: string;
 }
-export interface Storage {
-    store(state: string): any | Promise<any>;
-    retrieve(): string | undefined | Promise<string | undefined>;
+export interface Delegate<T> {
+    loadScript(name: string): (...context: T[]) => Script;
+    loadState(): string | undefined | Promise<string | undefined>;
+    saveState(state: string): any | Promise<any>;
 }
 export declare class Dialogue<T> {
-    private readonly build;
-    private readonly state;
     private readonly handlers;
+    private readonly state;
     private script;
     private outputFilter;
     baseUrl: string;
-    constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]);
+    constructor(defaultScript: string, delegate: Delegate<T>, ...context: T[]);
     execute(directive: Directive): Promise<void>;
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto | Promise<void | Goto>)): void;
     private process(message, processor);

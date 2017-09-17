@@ -17,5 +17,6 @@
     "editor.fontSize": 14,
     "vsicons.presets.angular": false,
     "typescript.referencesCodeLens.enabled": true,
-    "debug.inlineValues": true
+    "debug.inlineValues": true,
+    "typescript.tsdk": "node_modules\\typescript\\lib"
 }

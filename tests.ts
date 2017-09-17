@@ -1,5 +1,5 @@
 
-import { Dialogue, dialogue, Storage, Script, goto, rollback, say, ask, expect, onText, location, onLocation, onFile, onAudio, onImage, onVideo, image, audio, buttons, list, defaultAction, UnexpectedInputError, mock, onUndo } from './dialogue-builder'
+import { Dialogue, dialogue, Delegate, Script, goto, rollback, say, ask, expect, onText, location, onLocation, onFile, onAudio, onImage, onVideo, image, audio, buttons, list, defaultAction, UnexpectedInputError, mock, onUndo } from './dialogue-builder'
 import { fbTemplate } from 'claudia-bot-builder'
 
 Object.defineProperty(global, 'jasmineRequire', {
@@ -11,11 +11,11 @@ import 'jasmine-promises'
 describe("Dialogue", () => {
     
     interface This {
-        build<T>(script: (context: T) => Script, state: Array<{ type: 'label'|'expect'|'complete', name?: string, inline?: boolean }>, storage?: Storage, context?: T): [Dialogue<T>, Storage]
+        build<T>(script: (context: T) => Script, state: Array<{ type: 'label'|'expect'|'complete', name?: string, inline?: boolean }>, storage?: Delegate, context?: T): [Dialogue<T>, Delegate]
     }
 
     beforeEach(function(this: This) {
-        this.build = function<T>(script: () => Script, state: Array<{ type: 'label'|'expect'|'complete', name?: string }>, storage = jasmine.createSpyObj('storage', ['store', 'retrieve']), ...context: T[]): [Dialogue<T>, Storage] {
+        this.build = function<T>(script: () => Script, state: Array<{ type: 'label'|'expect'|'complete', name?: string }>, storage = jasmine.createSpyObj('storage', ['store', 'retrieve']), ...context: T[]): [Dialogue<T>, Delegate] {
             storage.retrieve.and.callFake(() => Promise.resolve(JSON.stringify(state)));
             return [new Dialogue<T>(dialogue("Mock", script), storage, ...context), storage];            
         }        
@@ -30,20 +30,20 @@ describe("Dialogue", () => {
     });
 
     it("throws an exception on empty script given", async function(this: This) {
-        const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
+        const storage: Delegate = jasmine.createSpyObj('storage', ['store', 'retrieve']);
         jasmine.expect(
             () => this.build(() => [], [], storage)
         ).toThrow(jasmine.stringMatching('Dialogue cannot be empty'));
-        jasmine.expect(storage.store).not.toHaveBeenCalled();
+        jasmine.expect(storage.saveState).not.toHaveBeenCalled();
     });
 
     it("throws an exception on script only containing labels", async function(this: This) {
-        const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
+        const storage: Delegate = jasmine.createSpyObj('storage', ['store', 'retrieve']);
         jasmine.expect(() => this.build(() => [
                 'start',
                 'end'
             ], [], storage)).toThrow(jasmine.stringMatching('Dialogue cannot be empty'));
-        jasmine.expect(storage.store).not.toHaveBeenCalled();
+        jasmine.expect(storage.saveState).not.toHaveBeenCalled();
     });
 
     it("sends the first and only message in a single message dialogue", async function(this: This) {
@@ -53,7 +53,7 @@ describe("Dialogue", () => {
         jasmine.expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(
             jasmine.arrayContaining([jasmine.objectContaining({ text: 'Hi!' })])
         );
-        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
+        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
     });
         
     it("sends all messages with NO_PUSH notification type", async function(this: This) {
@@ -70,10 +70,10 @@ describe("Dialogue", () => {
             say `Hi!`
         ], []);
         await dialogue.consume(mock.postback(), mock.apiRequest)
-        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
+        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
         await dialogue.consume(mock.message('Hi'), mock.apiRequest)
             .then(() => fail('Did not throw'))
-            .catch(() => jasmine.expect(storage.store).toHaveBeenCalledTimes(1))
+            .catch(() => jasmine.expect(storage.saveState).toHaveBeenCalledTimes(1))
     });
         
     it("sends multiple messages at once with pauses and typing indicators in between", async function(this: This) {
@@ -87,7 +87,7 @@ describe("Dialogue", () => {
             { claudiaPause: jasmine.anything() },
             jasmine.objectContaining({ text: `How are you?` }),
         ]);
-        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
+        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
     });
 
         
@@ -101,7 +101,7 @@ describe("Dialogue", () => {
         ], []);
         const result = await dialogue.consume(mock.postback(), mock.apiRequest);
         jasmine.expect(result.filter(m => m.claudiaPause).reduce((t, m) => t + m.claudiaPause, 0)).toBeLessThan(10 * 1000);
-        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
+        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
     });
 
 
@@ -142,7 +142,7 @@ describe("Dialogue", () => {
     });
     
     it("throws an exception on script with duplicate expect statements", async function(this: This) {
-        const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
+        const storage: Delegate = jasmine.createSpyObj('storage', ['store', 'retrieve']);
         jasmine.expect(() => this.build(() => [
                 ask `How are you?`, 
                 expect `I feel`, {},
@@ -150,25 +150,25 @@ describe("Dialogue", () => {
                 expect `I feel`, {},
             ], [], storage)
         ).toThrow(jasmine.stringMatching('Duplicate expect statement found'));
-        jasmine.expect(storage.store).not.toHaveBeenCalled();
+        jasmine.expect(storage.saveState).not.toHaveBeenCalled();
     });
 
     it("throws an exception on script with duplicate template ids", async function(this: This) {
-        const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
+        const storage: Delegate = jasmine.createSpyObj('storage', ['store', 'retrieve']);
         jasmine.expect(() => this.build(() => [
                 buttons('some buttons', 'Some buttons', {}),
                 buttons('some buttons', 'Some more buttons', {}),
             ], [], storage)
         ).toThrow(jasmine.stringMatching('Duplicate identifier found'));
-        jasmine.expect(storage.store).not.toHaveBeenCalled();
+        jasmine.expect(storage.saveState).not.toHaveBeenCalled();
     });
 
     it("throws an exception on expect statement not followed by a response handler", async function(this: This) {
         const test = (script: Script) => {
-            const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
+            const storage: Delegate = jasmine.createSpyObj('storage', ['store', 'retrieve']);
             jasmine.expect(() => this.build(() => script, [], storage))
                 .toThrow(jasmine.stringMatching('Expect statement must be followed by a response handler'));
-            jasmine.expect(storage.store).not.toHaveBeenCalled();
+            jasmine.expect(storage.saveState).not.toHaveBeenCalled();
         }
         //missing handler
         test([
@@ -182,14 +182,14 @@ describe("Dialogue", () => {
     });
 
     it("throws an exception on a response handler not preceded by an expect statement", async function(this: This) {
-        const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
+        const storage: Delegate = jasmine.createSpyObj('storage', ['store', 'retrieve']);
         jasmine.expect(() => this.build(() => [
                 say `Hi`, {
                     "Hi": null
                 }
             ], [], storage)
         ).toThrow(jasmine.stringMatching('Response handler must be preceded by an expect statement'));
-        jasmine.expect(storage.store).not.toHaveBeenCalled();
+        jasmine.expect(storage.saveState).not.toHaveBeenCalled();
     });
 
     it("pauses on expect to wait for a response", async function(this: This) {
@@ -205,7 +205,7 @@ describe("Dialogue", () => {
         jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Don't say this` })
         ]));
-        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: 'I feel'}]));
+        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: 'I feel'}]));
     });
 
     it("resumes where it paused on receiving a response", async function(this: This) {
@@ -216,7 +216,7 @@ describe("Dialogue", () => {
             },
         ], [{ type: 'expect', name: `I feel` }]);
         jasmine.expect(await dialogue.consume(mock.message('Amazing'), mock.apiRequest)).toEqual([]);
-        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'expect', name: 'I feel'}]));
+        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'expect', name: 'I feel'}]));
     });
 
     it("reevaluates a script after executing a response handler", async function(this: This) {
@@ -388,7 +388,7 @@ describe("Dialogue", () => {
     });
 
     it("throws an error when both location and onLocation specified on a handler", async function(this: This) {
-        const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
+        const storage: Delegate = jasmine.createSpyObj('storage', ['store', 'retrieve']);
         jasmine.expect(() => this.build(() => [
                 ask `Where are you?`, 
                 expect `I am here`, {
@@ -397,7 +397,7 @@ describe("Dialogue", () => {
                 },
             ], [{ type: 'expect', name: `I am here` }], storage)
         ).toThrow(jasmine.stringMatching('Both location and onLocation implemented in the same response handler'));
-        jasmine.expect(storage.store).not.toHaveBeenCalled();
+        jasmine.expect(storage.saveState).not.toHaveBeenCalled();
     });
 
     it("prefers a quick reply handler to the onText handler", async function(this: This) {
@@ -539,7 +539,7 @@ describe("Dialogue", () => {
             },            
         ], [{ type: 'expect', name: `I write like` }, { type: 'expect', name: `I sound like` }]);
         const result = await dialogue.consume(mock.multimedia("audio", "recording.wav"), mock.apiRequest);
-        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I write like` }, { type: 'expect', name: `I sound like` }]));
+        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I write like` }, { type: 'expect', name: `I sound like` }]));
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Sorry, I didn't quite catch that, I was expecting a file` }),
             jasmine.objectContaining({ text: `What do you write like?` }),
@@ -559,7 +559,7 @@ describe("Dialogue", () => {
             ask `How are you?`
         ], [{ type: 'expect', name: `I sound like` }]);
         const result = await dialogue.consume(mock.multimedia("audio", "recording.wav"), mock.apiRequest);
-        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I sound like` }]));
+        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I sound like` }]));
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Your voice is too high pitched` }),
             jasmine.objectContaining({ text: `What do you sound like?` }),
@@ -651,7 +651,7 @@ describe("Dialogue", () => {
             button,
         ], []);
         const result = await dialogue.consume(mock.postback(button.postbacks![0][0]), mock.apiRequest);
-        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}]));
+        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}]));
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: 'Running subroutine' }), 
             jasmine.objectContaining({ text: 'Hi!' }), 
@@ -673,7 +673,7 @@ describe("Dialogue", () => {
             say `Hi!`,
         ], [{ type: 'label', name: 'previous_label'}]);
         const result = await dialogue.consume(mock.postback(button.postbacks![0][0]), mock.apiRequest);
-        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'label', name: 'previous_label'}]));
+        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'label', name: 'previous_label'}]));
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: 'Running subroutine' }), 
             jasmine.objectContaining({ text: 'Hi!' }), 
@@ -698,7 +698,7 @@ describe("Dialogue", () => {
             say `Goodbye!`,
         ], [{ type: 'expect', name: 'I feel'}]);
         const result = await dialogue.consume(mock.postback(button.postbacks![0][0]), mock.apiRequest);
-        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'expect', name: 'I feel'}]));
+        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'expect', name: 'I feel'}]));
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: 'Running subroutine' }), 
             jasmine.objectContaining({ text: 'Goodbye!' }), 
@@ -763,7 +763,7 @@ describe("Dialogue", () => {
     });
     
     it("throws an exception on calling goto with a missing label", async function(this: This) {
-        const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
+        const storage: Delegate = jasmine.createSpyObj('storage', ['store', 'retrieve']);
         const [dialogue] = this.build(() => [
             say `Hi!`,
             goto `label`,
@@ -773,12 +773,12 @@ describe("Dialogue", () => {
             .then(() => fail('Did not throw'))
             .catch((e) => {
                 jasmine.expect(e).toEqual(jasmine.stringMatching('Could not find label'));
-                jasmine.expect(storage.store).not.toHaveBeenCalled();
+                jasmine.expect(storage.saveState).not.toHaveBeenCalled();
             });
     });
 
     it("throws an exception on script with duplicate labels", async function(this: This) {
-        const storage: Storage = jasmine.createSpyObj('storage', ['store', 'retrieve']);
+        const storage: Delegate = jasmine.createSpyObj('storage', ['store', 'retrieve']);
         jasmine.expect(() => this.build(() => [
                 'label',
                 say `Hi!`,
@@ -786,7 +786,7 @@ describe("Dialogue", () => {
                 ask `How are you?`,
             ], [], storage)
         ).toThrow(jasmine.stringMatching('Duplicate label found'));
-        jasmine.expect(storage.store).not.toHaveBeenCalled();
+        jasmine.expect(storage.saveState).not.toHaveBeenCalled();
     });
 
     it("aborts a goto that causes an endless loop", async function(this: This) {
@@ -799,7 +799,7 @@ describe("Dialogue", () => {
             .then(() => fail('Did not throw'))
             .catch(e => {
                 jasmine.expect(e).toEqual(jasmine.stringMatching('Endless loop detected'));
-                jasmine.expect(storage.store).not.toHaveBeenCalled();
+                jasmine.expect(storage.saveState).not.toHaveBeenCalled();
             });
     });
     
@@ -820,9 +820,9 @@ describe("Dialogue", () => {
             },
         ], [{ type: 'expect', name: `I feel` }]);
         await dialogue.consume(mock.message('Amazing'), mock.apiRequest)
-        jasmine.expect(storage.store).not.toHaveBeenCalledWith(jasmine.arrayContaining([{ type: 'complete' }]));
+        jasmine.expect(storage.saveState).not.toHaveBeenCalledWith(jasmine.arrayContaining([{ type: 'complete' }]));
         const result = await dialogue.consume(mock.location(50, 1), mock.apiRequest);
-        jasmine.expect(storage.store).toHaveBeenCalledWith((jasmine.stringMatching(JSON.stringify([{ type: 'complete' }]))));
+        jasmine.expect(storage.saveState).toHaveBeenCalledWith((jasmine.stringMatching(JSON.stringify([{ type: 'complete' }]))));
         jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `But why?` })
         ]));
@@ -843,7 +843,7 @@ describe("Dialogue", () => {
             }
         ], [{ type: 'expect', name: `I am at`}, { type: 'label', name: `label`, inline: false }, { type: 'expect', name: `I feel` }]);
         const result = await dialogue.consume(mock.message('Wrong input'), mock.apiRequest)
-        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I am at`}, { type: 'label', name: `label`, inline: false }, { type: 'expect', name: `I feel` }]));
+        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I am at`}, { type: 'label', name: `label`, inline: false }, { type: 'expect', name: `I feel` }]));
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Where are you?` })
         ]));
@@ -880,7 +880,7 @@ describe("Dialogue", () => {
             .then(() => fail('Did not throw'))
             .catch(e => {
                 jasmine.expect(e).toEqual(jasmine.stringMatching('Endless loop detected'));
-                jasmine.expect(storage.store).not.toHaveBeenCalled();
+                jasmine.expect(storage.saveState).not.toHaveBeenCalled();
             });    
     });
 
@@ -948,7 +948,7 @@ describe("Dialogue", () => {
         ], [{ type: 'expect', name: `I feel` }, { type: 'expect', name: `I feel that way because` }]);
         dialogue.setKeywordHandler('start over', 'restart')
         const result = await dialogue.consume(mock.message('Start over'), mock.apiRequest)
-        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: 'I feel' }]));
+        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: 'I feel' }]));
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `How are you?` })
         ]));
@@ -972,7 +972,7 @@ describe("Dialogue", () => {
         dialogue.setKeywordHandler('back', 'undo')
         const result = await dialogue.consume(mock.message('back'), mock.apiRequest)
         jasmine.expect(undoHandler).toHaveBeenCalledTimes(1);
-        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I feel` }]));
+        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I feel` }]));
         jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `Don't repeat this on undo` })
         ]));
@@ -998,7 +998,7 @@ describe("Dialogue", () => {
         dialogue.setKeywordHandler('back', 'undo')
         const result = await dialogue.consume(mock.message('back'), mock.apiRequest)
         jasmine.expect(undoHandler).toHaveBeenCalledTimes(1);
-        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I feel that way because` }, { type: 'expect', name: `I feel` }]));
+        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I feel that way because` }, { type: 'expect', name: `I feel` }]));
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `But why?` })
         ]));
@@ -1027,7 +1027,7 @@ describe("Dialogue", () => {
         dialogue.setKeywordHandler('back', 'undo')
         const result = await dialogue.consume(mock.message('back'), mock.apiRequest)
         jasmine.expect(undoHandler).toHaveBeenCalledTimes(1);
-        jasmine.expect(storage.store).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I feel` }]));
+        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I feel` }]));
         jasmine.expect(result).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `How are you?` })
         ]));
@@ -1046,11 +1046,11 @@ describe("Dialogue", () => {
         jasmine.expect(await dialogue.consume(mock.message('start over'), mock.apiRequest)).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `How are you?` })
         ]));
-        jasmine.expect(storage.store).not.toHaveBeenCalledWith(jasmine.arrayContaining([{ type: 'complete' }]));
+        jasmine.expect(storage.saveState).not.toHaveBeenCalledWith(jasmine.arrayContaining([{ type: 'complete' }]));
         jasmine.expect(await dialogue.consume(mock.message('back'), mock.apiRequest)).toEqual(jasmine.arrayContaining([
             jasmine.objectContaining({ text: `How are you?` })
         ]));
-        jasmine.expect(storage.store).not.toHaveBeenCalledWith(jasmine.arrayContaining([{ type: 'complete' }]));
+        jasmine.expect(storage.saveState).not.toHaveBeenCalledWith(jasmine.arrayContaining([{ type: 'complete' }]));
     });
 
     it("prefixes uris with the baseUrl but leaves full urls as is", async function(this: This) {
