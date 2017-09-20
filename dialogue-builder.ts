@@ -44,22 +44,17 @@ class UndefinedHandlerError extends UnexpectedInputError {
     }
 }
 export class Directive {
-    private _script: string | undefined
+    readonly script: string
     readonly name: string
     constructor(private text: string) {
         const index = text.indexOf('::');
         if(index < 0) {
+            this.script = Dialogue.currentScript;
             this.name = text;
         } else {
-            this._script = text.substring(0, index);
+            this.script = text.substring(0, index);
             this.name = text.substring(index + 2);
         }
-    }
-    get script(): string {
-        return this._script!;
-    }
-    set script(value) {
-        this._script = this._script || value;
     }
     get path(): string {
         return `${this.script}::${this.name}`        
@@ -89,7 +84,6 @@ export function expect(template: TemplateStringsArray, ...substitutions: any[]):
 export function goto(template: TemplateStringsArray, ...substitutions: any[]): Goto {
     return new Goto(String.raw(template, ...substitutions));
 }
-
 export function rollback(template: TemplateStringsArray, ...substitutions: any[]): Rollback {
     return new Rollback(String.raw(template, ...substitutions));
 }
@@ -113,16 +107,18 @@ export interface Bubble {
     buttons?: ButtonHandler 
 }
 export function buttons(id: string, text: string, handler: ButtonHandler): Button {
+    if(!Dialogue.currentScript) throw new Error(`buttons can only be invoked from within a script array`);
     const buttons = new Button(text);
     buttons.identifier = `buttons '${id}'`;
     buttons.postbacks = [];
     Object.keys(handler).forEach(key => {
-        const payload = `'${key}' button in buttons '${id}'`;
+        const payload = `'${Dialogue.currentScript}::${key}' button in buttons '${id}'`;
         buttons.addButton(key, payload).postbacks!.push([payload, handler[key]]);
     });
     return buttons;
 }
 export function list(id: string, type: 'compact'|'large', bubbles: Bubble[], handler?: ButtonHandler): List {
+    if(!Dialogue.currentScript) throw new Error(`list can only be invoked from within a script array`);
     const list = new List(type);
     list.identifier = `list '${id}'`;
     list.postbacks = [];
@@ -145,6 +141,7 @@ export function list(id: string, type: 'compact'|'large', bubbles: Bubble[], han
     return list;
 }
 export function generic(id: string, type: 'horizontal'|'square', bubbles: Bubble[]): Generic {
+    if(!Dialogue.currentScript) throw new Error(`generic can only be invoked from within a script array`);
     const generic = new Generic();
     generic.identifier = `generic '${id}'`;
     generic.postbacks = [];
@@ -163,30 +160,16 @@ export function generic(id: string, type: 'horizontal'|'square', bubbles: Bubble
     });
     return generic;
 }
-export function dialogue<T>(name: string, script: (...context: T[]) => Script): DialogueBuilder<T> {
-    const builder = script as DialogueBuilder<T>;
-    builder.dialogueName = name;
-    return builder;
-}
-export interface DialogueBuilder<T> {
-    (...context: T[]): Script
-    dialogueName: string
-}
 export interface Delegate<T> {
     loadScript(name: string): (...context: T[]) => Script
     loadState(): string | undefined | Promise<string | undefined>
     saveState(state: string): any | Promise<any>
 }
-interface Processor { 
-    consumePostback(identifier: string): Promise<boolean>
-    consumeKeyword(keyword: string): Promise<boolean>
-    consumeResponse(handler: ResponseHandler): Promise<void | Goto | Expect>, 
-    addQuickReplies(message: BaseTemplate, handler: ResponseHandler): void
-    insertPauses(output: BaseTemplate[]): Array<{ get(): string}>
-}
 export class Dialogue<T> {
+    static currentScript: string
     private readonly handlers: Map<string, () =>  void | Goto | Promise<Goto | void>> = new Map();
     private readonly state: State
+    private readonly loadScript: (name: string) => (...context: T[]) => Script
     private script: Script
     private outputFilter: (o: BaseTemplate) => boolean
     public baseUrl: string
@@ -199,18 +182,18 @@ export class Dialogue<T> {
         this.state = new State(labels, expects, {
             loadState: delegate.loadState,
             saveState: delegate.saveState,
-            loadScript: name => loaders.get(name || defaultScript) || function(this: () => Script) {
-                name = name || defaultScript;
+            loadScript: this.loadScript = name => loaders.get(name || defaultScript) || function(this: () => Script) {
+                name = Dialogue.currentScript = name || defaultScript;
                 //update script every call
                 self.script = delegate.loadScript(name)(...context);
                 if(loaders.has(name)) return self.script;
                 //but only run checks once
-                loaders.set(name || defaultScript, this);
+                loaders.set(name, this);
+                labels.set(`${name}::`, -1);   
                 const templates = new Set();
                 for(let line = 0; line < self.script.length; line++) {
                     let value = self.script[line];
                     if(value instanceof Expect) {
-                        value.script = name;
                         if(expects.has(value.path)) throw new Error(`Duplicate expect statement (${name}:${line}): expect \`${value}\``);
                         expects.set(value.path, line);   
                         const handler = self.script[++line];
@@ -219,31 +202,27 @@ export class Dialogue<T> {
                     } else if(typeof value === 'string') {
                         const label = value.startsWith('!') ? value.substring(1) : value;
                         if(labels.has(`${name}::${label}`)) throw new Error(`Duplicate label found (${name}:${line}): '${value}'`);
-                        labels.set(`${name}${label}`, line);   
+                        labels.set(`${name}::${label}`, line);   
                     } else if(value instanceof Goto) {
-                        value.script = name;
                         jumps.push([line, value]);
                     } else if(value instanceof BaseTemplate) {
                         if(templates.has(`${name}::${value.identifier}`)) throw new Error(`Duplicate identifier found (${name}:${line}): ${value.identifier}`);
                         if(value.identifier) templates.add(`${name}::${value.identifier}`);
-                        (value.postbacks || []).forEach(p => self.handlers.set(`${name}::${p[0]}`, p[1]));
+                        (value.postbacks || []).forEach(p => self.handlers.set(`${p[0]}`, p[1]));
                     } else if(value !== null) {
                         throw new Error(`Response handler must be preceded by an expect statement (${name}:${line})`)
                     }
                 }
-                if(labels.size == self.script.length) throw new Error('Dialogue cannot be empty');
                 const jump = jumps.find(j => !labels.has(j[1].path) && loaders.has(j[1].script));
                 if(jump) new Error(`Could not find label (${jump[1].script}:${jump[0]}): ${jump[1].constructor.name.toLowerCase()} \`${jump[1]}\``);
                 return self.script;
             }
         });
     }
-
     async execute(directive: Directive) {
         await this.state.retrieveState();
         this.state.jump(directive, `Dialogue.execute(${directive.constructor.name.toLowerCase()} \`${directive}\`)`)
     }
-
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto | Promise<void | Goto>)) {
         const keys = keywords instanceof Array ? keywords : [keywords];
         const undo = () => { 
@@ -255,36 +234,24 @@ export class Dialogue<T> {
         }
         const h = handler === 'restart' ? () => this.state.restart() : handler === 'undo' ? undo : handler;
         keys.forEach(k => this.handlers.set(`keyword '${k.toLowerCase()}'`, h));
-    }
-    
-    private async process(message: Message, processor: Processor): Promise<string[]> {
-        await this.state.retrieveState();
-        let showQuickReplies = true;
-        //process input
-        const output: Array<BaseTemplate> = []
-        if(message.originalRequest.postback) {
-            const payload = message.originalRequest.postback.payload;
-            await processor.consumePostback(payload) || await processor.consumeKeyword(payload) 
-                || console.log(`Postback received with unknown payload '${payload}'`);
-        } else if(!await processor.consumeKeyword(message.text)) {
-            const line = this.state.startLine;
-            if(line > 0) try {
-                const processResponse = async (line: number): Promise<void> => {
-                    const result = await processor.consumeResponse(this.script[line - 1]);
-                    if(!(result instanceof Directive)) return;
-                    line = this.state.jump(result, `expect \`${this.script[line - 2].toString()}\``);
-                    result instanceof Expect && await processResponse(line);
-                }
-                await processResponse(line);
-            } catch(e) {
-                if(!(e instanceof UnexpectedInputError)) throw e;
-                this.state.repeat();
-                if(e.localizedMessage) output.push(new Text(e.localizedMessage));
-                this.outputFilter = o => e.repeatQuestion ? o instanceof Ask : false;
-                showQuickReplies = e.showQuickReplies;
-            }
-        }
+    }    
+    async supply(lambdaContext: any, unexpectedInput?: UnexpectedInputError): Promise<string[]> {
         if(this.state.isComplete) throw [];
+        const insertPauses = (output: BaseTemplate[]) => {
+            //calculate pauses between messages
+            const remaining = Math.min(10 * 1000, lambdaContext.getRemainingTimeInMillis() - 2);
+            const factor = Math.min(1, remaining / output.reduce((total, o) => total + o.getReadingDuration(), 0));
+            //get output and insert pauses
+            const messages: Array<{ get(): string}> = [];
+            output.forEach(message => messages.push(
+                message.setBaseUrl(this.baseUrl).setNotificationType('NO_PUSH'), 
+                new ChatAction('typing_on'),
+                new Pause(message.getReadingDuration() * factor)
+            ));
+            messages.length -= 2;
+            return messages;
+        }
+        const output: Array<BaseTemplate> = unexpectedInput && unexpectedInput.localizedMessage ? [new Text(unexpectedInput.localizedMessage)] : [];
         //gather output
         for(let i = this.state.startLine; i < this.script.length; i++) {
             const element = this.script[i];
@@ -292,7 +259,7 @@ export class Dialogue<T> {
             if(element instanceof BaseTemplate) {
                 if(!this.outputFilter || this.outputFilter(element)) output.push(element);
             } else if(element instanceof Goto) {
-                i = this.state.jump(element, i, true) - 1
+                i = this.state.jump(element, `${Dialogue.currentScript}::${i}`, true) - 1
             } else if(typeof element === 'string') {
                 //if element is a breaking label
                 if(element.startsWith('!')) break;
@@ -300,89 +267,96 @@ export class Dialogue<T> {
                 //persist asking of this question
                 await this.state.complete(element);
                 if(output.length == 0) return []; 
-                if(showQuickReplies) processor.addQuickReplies(output[output.length-1], this.script[i+1])
-                return processor.insertPauses(output).map(e => e.get());                             
+                if(!unexpectedInput || unexpectedInput.showQuickReplies) {
+                    //add quick replies if present
+                    if(this.script[i+1][location]) output[output.length-1].addQuickReplyLocation();
+                    Object.keys(this.script[i+1]).forEach(key => output[output.length-1].addQuickReply(key, key));
+                }
+                return insertPauses(output).map(e => e.get());                             
             }
         }
         //persist completion 
         await this.state.complete();
-        return output.length == 0 ? [] : processor.insertPauses(output).map(e => e.get());
+        return output.length == 0 ? [] : insertPauses(output).map(e => e.get());
     }     
-
     async consume(message: Message, apiRequest: Request): Promise<any[]> {
-        return this.process(message, {
-            consumeKeyword(this: Processor, keyword) {
-                return this.consumePostback(`keyword '${keyword.toLowerCase()}'`);
-            }, 
-            consumePostback: async identifier => {
+        let unexpectedInput = undefined; 
+        try {
+            await this.state.retrieveState();
+            const consumeKeyword = (keyword: string) => {
+                this.loadScript('')();
+                return consumePostback(`keyword '${keyword.toLowerCase()}'`);
+            }
+            const consumePostback = async (identifier: string) => {
+                this.handlers.has(identifier) || this.loadScript(identifier.includes('::') ? identifier.substr(0, identifier.indexOf('::')) : '')();
                 const handler = this.handlers.get(identifier);
                 if(!handler) return false;
                 const goto = await handler();
                 goto instanceof Goto && this.state.jump(goto, identifier);
                 return true;                            
-            },
-            consumeResponse: handler => {
-                //if empty handler do nothing
-                if(Object.getOwnPropertyNames(handler).length == 0 && Object.getOwnPropertySymbols(handler).length == 0) return;
-                //handle any attachments
-                const handle = <T>(handler: ResponseHandler, invoke: (method: Function) => T, ...keys: Array<string | symbol>): T | undefined => {
-                    keys = keys.filter(key => handler.hasOwnProperty(key));
-                    if(keys.length == 0) throw new UndefinedHandlerError(handler);
-                    return handler[keys[0]] ? invoke(handler[keys[0]]) : undefined;
-                }
-                let results = [];
-                for(const attachment of message.originalRequest.message.attachments || []) {
-                    switch(attachment.type) {
-                        case 'location':
-                            const invoke = (m: Function) => m.call(handler, attachment.payload.coordinates!.lat, attachment.payload.coordinates!.long, attachment.payload.title, attachment.payload.url);
-                            results.push(handle(handler, invoke, location, onLocation, defaultAction));
-                            break;
-                        case 'image':
-                            results.push(handle(handler, m => m.call(handler, attachment.payload.url), onImage, defaultAction));
-                            break;
-                        case 'audio':
-                            results.push(handle(handler, m => m.call(handler, attachment.payload.url), onAudio, defaultAction));
-                            break;
-                        case 'video':
-                            results.push(handle(handler, m => m.call(handler, attachment.payload.url), onVideo, defaultAction));
-                            break;
-                        case 'file':
-                            results.push(handle(handler, m => m.call(handler, attachment.payload.url), onFile, defaultAction));
-                            break;
-                        default:
-                            throw new Error(`Unsupported attachment type '${attachment.type}'`)
-                    }
-                }
-                return results.length ? Promise.all(results).then(r => r.reduce((p, c) => Directive.assertEqual(p, c) || p || c)) : 
-                    handle(handler, m => m.call(handler, message.text), message.text, onText, defaultAction);
-            },
-            addQuickReplies(this: Processor, message, handler) {
-                //add quick replies if present
-                if(handler[location]) message.addQuickReplyLocation();
-                Object.keys(handler).forEach(key => message.addQuickReply(key, key));
-            },
-            insertPauses: output => {
-                //calculate pauses between messages
-                const remaining = Math.min(10 * 1000, apiRequest.lambdaContext.getRemainingTimeInMillis() - 2);
-                const factor = Math.min(1, remaining / output.reduce((total, o) => total + o.getReadingDuration(), 0));
-                //get output and insert pauses
-                const messages: Array<{ get(): string}> = [];
-                output.forEach(message => messages.push(
-                    message.setBaseUrl(this.baseUrl).setNotificationType('NO_PUSH'), 
-                    new ChatAction('typing_on'),
-                    new Pause(message.getReadingDuration() * factor)
-                ));
-                messages.length -= 2;
-                return messages;
             }
-        })
+            //process input
+            if(message.originalRequest.postback) {
+                const payload = message.originalRequest.postback.payload;
+                await consumePostback(payload) || await consumeKeyword(payload) 
+                    || console.log(`Postback received with unknown payload '${payload}'`);
+            } else if(!await consumeKeyword(message.text)) {
+                const processResponse = async (line: number): Promise<void> => {
+                    const handler = this.script[line - 1];
+                    //if empty handler do nothing
+                    if(Object.getOwnPropertyNames(handler).length == 0 && Object.getOwnPropertySymbols(handler).length == 0) return;
+                    //handle any attachments
+                    const handle = <T>(handler: ResponseHandler, invoke: (method: Function) => T, ...keys: Array<string | symbol>): T | undefined => {
+                        keys = keys.filter(key => handler.hasOwnProperty(key));
+                        if(keys.length == 0) throw new UndefinedHandlerError(handler);
+                        return handler[keys[0]] ? invoke(handler[keys[0]]) : undefined;
+                    }
+                    let results = [];
+                    for(const attachment of message.originalRequest.message.attachments || []) {
+                        switch(attachment.type) {
+                            case 'location':
+                                const invoke = (m: Function) => m.call(handler, attachment.payload.coordinates!.lat, attachment.payload.coordinates!.long, attachment.payload.title, attachment.payload.url);
+                                results.push(handle(handler, invoke, location, onLocation, defaultAction));
+                                break;
+                            case 'image':
+                                results.push(handle(handler, m => m.call(handler, attachment.payload.url), onImage, defaultAction));
+                                break;
+                            case 'audio':
+                                results.push(handle(handler, m => m.call(handler, attachment.payload.url), onAudio, defaultAction));
+                                break;
+                            case 'video':
+                                results.push(handle(handler, m => m.call(handler, attachment.payload.url), onVideo, defaultAction));
+                                break;
+                            case 'file':
+                                results.push(handle(handler, m => m.call(handler, attachment.payload.url), onFile, defaultAction));
+                                break;
+                            default:
+                                throw new Error(`Unsupported attachment type '${attachment.type}'`)
+                        }
+                    }
+                    const result = await (results.length ? Promise.all(results).then(r => r.reduce((p, c) => Directive.assertEqual(p, c) || p || c)) : 
+                        handle(handler, m => m.call(handler, message.text), message.text, onText, defaultAction));
+                    if(!(result instanceof Directive)) return;
+                    line = this.state.jump(result, `${Dialogue.currentScript}::expect \`${this.script[line - 2].toString()}\``);
+                    result instanceof Expect && await processResponse(line);
+                }
+                const line = this.state.startLine;
+                if(line > 0) await processResponse(line);
+            }        
+        } catch(error) {
+            if(!(error instanceof UnexpectedInputError)) throw error;
+            this.state.repeat();
+            this.outputFilter = o => error.repeatQuestion ? o instanceof Ask : false;
+            unexpectedInput = error;
+        }
+        return this.supply(apiRequest.lambdaContext, unexpectedInput);
     }
 }
 
 class State {
     private state: Array<{ type: 'label'|'expect'|'complete', path?: string, inline?: boolean }>
     private jumpCount = 0
-    constructor(private expects: Map<string, number>, private labels: Map<string, number>, private delegate: Delegate<void>) {}
+    constructor(private labels: Map<string, number>, private expects: Map<string, number>, private delegate: Delegate<void>) {}
     async retrieveState() {
         if(!this.state) {
             const json = await this.delegate.loadState();
@@ -395,16 +369,16 @@ class State {
     }
     get startLine(): number {
         assert(this.state);
-        const path = this.state[0].path!;
+        const path = this.state[0] && this.state[0].path!;
         switch(this.state[0] && this.state[0].type) {
             case undefined:
-                this.delegate.loadScript('');
+                this.delegate.loadScript('')();
                 return 0;
             case 'expect': 
-                this.delegate.loadScript(path.substr(0, path.indexOf('::')));
+                this.delegate.loadScript(path.substr(0, path.indexOf('::')))();
                 return this.expects.get(path)! + 2 || 0;
             case 'label': 
-                this.delegate.loadScript(path.substr(0, path.indexOf('::')));
+                this.delegate.loadScript(path.substr(0, path.indexOf('::')))();
                 return this.labels.get(path)! + 1 || 0;
             case 'complete':
                 return -1;
@@ -412,17 +386,18 @@ class State {
                 throw new Error(`Unexpected type ${this.state[0].type}`);
         }
     }
-    jump(location: Directive, lineOrIdentifier: number|string, fromInlineGoto: boolean = false): number {
+    jump(location: Directive, source: string, fromInlineGoto: boolean = false): number {
         assert(this.state);
-        if(++this.jumpCount > 10) throw new Error(`Endless loop detected ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: ${location.constructor.name.toLowerCase()} \`${location}\``);
+        this.delegate.loadScript(location.script)();
+        if(++this.jumpCount > 10) throw new Error(`Endless loop detected (${source}): ${location.constructor.name.toLowerCase()} \`${location}\``);
         if(location instanceof Expect) {
             const line = this.expects.get(location.path);
-            if(line === undefined) throw new Error(`Could not find expect referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: expect \`${location}\``);        
+            if(line === undefined) throw new Error(`Could not find expect (${source}): expect \`${location}\``);        
             this.state.unshift({ type: 'expect', path: location.path });    
             return line + 2 || 0;
         }
-        if(!this.labels.has(location.path)) throw new Error(`Could not find label referenced ${typeof lineOrIdentifier == 'number' ? 'on line' : 'by'} ${lineOrIdentifier}: ${location instanceof Rollback ? 'rollback' : 'goto'} \`${location}\``);        
-        console.log(`${location instanceof Rollback ? 'Rolling back past' : 'Jumping to'} label '${location.name}' from ${typeof lineOrIdentifier == 'number' ? 'line' : ''} ${lineOrIdentifier}: ${location.constructor.toString().toLowerCase()} \`${location}\``);
+        if(!this.labels.has(location.path)) throw new Error(`Could not find label (${source}): ${location instanceof Rollback ? 'rollback' : 'goto'} \`${location}\``);        
+        console.log(`${location instanceof Rollback ? 'Rolling back past' : 'Jumping to'} label '${location.path}' (${source}): ${location.constructor.name.toLowerCase()} \`${location}\``);
         if(location instanceof Rollback) {
             this.state.splice(0, this.state.findIndex(s => s.type === 'label' && s.path === location.path) + 1);                
             return this.startLine;

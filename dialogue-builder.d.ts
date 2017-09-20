@@ -25,10 +25,9 @@ export declare class UnexpectedInputError extends Error {
 }
 export declare class Directive {
     private text;
-    private _script;
+    readonly script: string;
     readonly name: string;
     constructor(text: string);
-    script: string;
     readonly path: string;
     toString(): string;
     static assertEqual(a: Directive | undefined, b: Directive | undefined): void;
@@ -62,26 +61,23 @@ export interface Bubble {
 export declare function buttons(id: string, text: string, handler: ButtonHandler): Button;
 export declare function list(id: string, type: 'compact' | 'large', bubbles: Bubble[], handler?: ButtonHandler): List;
 export declare function generic(id: string, type: 'horizontal' | 'square', bubbles: Bubble[]): Generic;
-export declare function dialogue<T>(name: string, script: (...context: T[]) => Script): DialogueBuilder<T>;
-export interface DialogueBuilder<T> {
-    (...context: T[]): Script;
-    dialogueName: string;
-}
 export interface Delegate<T> {
     loadScript(name: string): (...context: T[]) => Script;
     loadState(): string | undefined | Promise<string | undefined>;
     saveState(state: string): any | Promise<any>;
 }
 export declare class Dialogue<T> {
+    static currentScript: string;
     private readonly handlers;
     private readonly state;
+    private readonly loadScript;
     private script;
     private outputFilter;
     baseUrl: string;
     constructor(defaultScript: string, delegate: Delegate<T>, ...context: T[]);
     execute(directive: Directive): Promise<void>;
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto | Promise<void | Goto>)): void;
-    private process(message, processor);
+    supply(lambdaContext: any, unexpectedInput?: UnexpectedInputError): Promise<string[]>;
     consume(message: Message, apiRequest: Request): Promise<any[]>;
 }
 export declare namespace mock {

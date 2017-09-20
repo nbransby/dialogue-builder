@@ -12,7 +12,7 @@
     "emoji-regex": "^6.4.2"
   },
   "devDependencies": {
-    "@types/jasmine": "^2.5.40",
+    "@types/jest": "^20.0.8",
     "@types/node": "^7.0.4",
     "babel": "^6.5.2",
     "babel-cli": "^6.22.2",
@@ -21,18 +21,16 @@
     "eslint": "^3.15.0",
     "eslint-plugin-node": "^3.0.5",
     "gulp": "^3.9.1",
-    "jasmine": "^2.5.2",
-    "jasmine-promises": "^0.4.1",
-    "jasmine-ts": "0.0.3",
+    "jest": "^21.1.0",
     "line-number": "^0.1.0",
     "nyc": "^10.0.0",
+    "ts-jest": "^21.0.1",
     "typescript": "^2.2.1"
   },
   "scripts": {
     "pretest": "tsc && babel dialogue-builder.js -o dialogue-builder.js && babel tests.js -o tests.js && eslint dialogue-builder.js tests.js",
-    "test": "nyc jasmine JASMINE_CONFIG_PATH=jasmine.json",
-    "posttest": "nyc report --reporter=json && codecov -f coverage/*.json",
-    "test-ts": "set JASMINE_CONFIG_PATH=jasmine.json&& jasmine-ts"
+    "test": "jest",
+    "posttest": "nyc report --reporter=json && codecov -f coverage/*.json"
   },
   "repository": {
     "type": "git",
@@ -50,5 +48,17 @@
   "bugs": {
     "url": "https://github.com/nbransby/dialogue-builder/issues"
   },
-  "homepage": "https://github.com/nbransby/dialogue-builder#readme"
+  "homepage": "https://github.com/nbransby/dialogue-builder#readme",
+  "jest": {
+    "transform": {
+      ".(ts|tsx)": "<rootDir>/node_modules/ts-jest/preprocessor.js"
+    },
+    "testRegex": "tests\\.ts$",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "json"
+    ]
+  }
 }

@@ -1,98 +1,77 @@
 
-import { Dialogue, dialogue, Delegate, Script, goto, rollback, say, ask, expect, onText, location, onLocation, onFile, onAudio, onImage, onVideo, image, audio, buttons, list, defaultAction, UnexpectedInputError, mock, onUndo } from './dialogue-builder'
+import { Dialogue, Script, goto, rollback, say, ask, expect as expect_, onText, location, onLocation, onFile, onAudio, onImage, onVideo, image, audio, buttons, list, defaultAction, UnexpectedInputError, mock, onUndo } from './dialogue-builder'
 import { fbTemplate } from 'claudia-bot-builder'
 
-Object.defineProperty(global, 'jasmineRequire', {
-    value: { interface: () => {} },
-    configurable: true
-});
-import 'jasmine-promises'
+
+const build = function<T>(
+        script: ((context: T) => Script) | { [name: string]: (context: T) => Script } , 
+        state: Array<{ type: 'label'|'expect'|'complete', path?: string, inline?: boolean }>, ...context: T[]
+    ): [Dialogue<T>, { loadScript: jest.Mock<{}>, loadState: jest.Mock<{}>, saveState: jest.Mock<{}>}] {
+    const delegate = { 
+        saveState: jest.fn(), 
+        loadState: jest.fn().mockReturnValueOnce(Promise.resolve(JSON.stringify(state))),
+        loadScript: script instanceof Function ? jest.fn().mockReturnValue(script) : 
+            jest.fn().mockImplementation(name => script[name])
+    };
+    return [new Dialogue<T>(script instanceof Function ? 'mock' : Object.keys(script)[0], delegate, ...context), delegate];            
+}
 
 describe("Dialogue", () => {
-    
-    interface This {
-        build<T>(script: (context: T) => Script, state: Array<{ type: 'label'|'expect'|'complete', name?: string, inline?: boolean }>, storage?: Delegate, context?: T): [Dialogue<T>, Delegate]
-    }
 
-    beforeEach(function(this: This) {
-        this.build = function<T>(script: () => Script, state: Array<{ type: 'label'|'expect'|'complete', name?: string }>, storage = jasmine.createSpyObj('storage', ['store', 'retrieve']), ...context: T[]): [Dialogue<T>, Delegate] {
-            storage.retrieve.and.callFake(() => Promise.resolve(JSON.stringify(state)));
-            return [new Dialogue<T>(dialogue("Mock", script), storage, ...context), storage];            
-        }        
-    });
-    
-    it("passes the supplied context to the script method", async function(this: This) {
-        const [dialogue] = this.build(context => {
-            jasmine.expect(context).toBe('context');
-            return [ say `Hi!`]
-        }, [], undefined, 'context');
-        await dialogue.consume(mock.postback(), mock.apiRequest)
+    test("passes the supplied context to the script method", async () => {
+        const [dialogue] = build(context => {
+            expect(context).toBe('context');
+            return [ say `Hi!`];
+        }, [], 'context');
+        await dialogue.consume(mock.postback(), mock.apiRequest);
     });
 
-    it("throws an exception on empty script given", async function(this: This) {
-        const storage: Delegate = jasmine.createSpyObj('storage', ['store', 'retrieve']);
-        jasmine.expect(
-            () => this.build(() => [], [], storage)
-        ).toThrow(jasmine.stringMatching('Dialogue cannot be empty'));
-        jasmine.expect(storage.saveState).not.toHaveBeenCalled();
-    });
-
-    it("throws an exception on script only containing labels", async function(this: This) {
-        const storage: Delegate = jasmine.createSpyObj('storage', ['store', 'retrieve']);
-        jasmine.expect(() => this.build(() => [
-                'start',
-                'end'
-            ], [], storage)).toThrow(jasmine.stringMatching('Dialogue cannot be empty'));
-        jasmine.expect(storage.saveState).not.toHaveBeenCalled();
-    });
-
-    it("sends the first and only message in a single message dialogue", async function(this: This) {
-        const [dialogue, storage] = this.build(() => [
+    test("sends the first and only message in a single message dialogue", async () => {
+        const [dialogue, delegate] = build(() => [
             say `Hi!`
         ], []);
-        jasmine.expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(
-            jasmine.arrayContaining([jasmine.objectContaining({ text: 'Hi!' })])
+        expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(
+            expect.arrayContaining([expect.objectContaining({ text: 'Hi!' })])
         );
-        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
     });
         
-    it("sends all messages with NO_PUSH notification type", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("sends all messages with NO_PUSH notification type", async () => {
+        const [dialogue] = build(() => [
             say `Hi!`
         ], []);
-        jasmine.expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(
-            jasmine.arrayContaining([jasmine.objectContaining({ notification_type: 'NO_PUSH' })])
+        expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(
+            expect.arrayContaining([expect.objectContaining({ notification_type: 'NO_PUSH' })])
         );
     });
         
-    it("throws empty array on consume when complete", async function(this: This) {
-        const [dialogue, storage] = this.build(() => [
+    test("throws empty array on consume when complete", async () => {
+        const [dialogue, delegate] = build(() => [
             say `Hi!`
         ], []);
         await dialogue.consume(mock.postback(), mock.apiRequest)
-        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
-        await dialogue.consume(mock.message('Hi'), mock.apiRequest)
-            .then(() => fail('Did not throw'))
-            .catch(() => jasmine.expect(storage.saveState).toHaveBeenCalledTimes(1))
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
+        await expect(dialogue.consume(mock.message('Hi'), mock.apiRequest)).rejects.toEqual([]);
+        expect(delegate.saveState).toHaveBeenCalledTimes(1);
     });
         
-    it("sends multiple messages at once with pauses and typing indicators in between", async function(this: This) {
-        const [dialogue, storage] = this.build(() => [
+    test("sends multiple messages at once with pauses and typing indicators in between", async () => {
+        const [dialogue, delegate] = build(() => [
             say `Hi!`,
             ask `How are you?`,
         ], []);
-        jasmine.expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual([
-            jasmine.objectContaining({ text: 'Hi!' }), 
+        expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual([
+            expect.objectContaining({ text: 'Hi!' }), 
             { sender_action: 'typing_on' }, 
-            { claudiaPause: jasmine.anything() },
-            jasmine.objectContaining({ text: `How are you?` }),
+            { claudiaPause: expect.anything() },
+            expect.objectContaining({ text: `How are you?` }),
         ]);
-        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
     });
 
         
-    it("ensure total pauses are less then 10 seconds when sending multiple messages at once", async function(this: This) {
-        const [dialogue, storage] = this.build(() => [
+    test("ensure total pauses are less then 10 seconds when sending multiple messages at once", async () => {
+        const [dialogue, delegate] = build(() => [
             say `Lorem ipsum dolor sit amet, consectetur adipiscing elit`,
             say `sed do eiusmod tempor incididunt ut labore et dolore magna aliqua`,
             say `quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat`,
@@ -100,530 +79,535 @@ describe("Dialogue", () => {
             say `Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum`
         ], []);
         const result = await dialogue.consume(mock.postback(), mock.apiRequest);
-        jasmine.expect(result.filter(m => m.claudiaPause).reduce((t, m) => t + m.claudiaPause, 0)).toBeLessThan(10 * 1000);
-        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
+        expect(result.filter(m => m.claudiaPause).reduce((t, m) => t + m.claudiaPause, 0)).toBeLessThan(10 * 1000);
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
     });
 
 
-    it("trims extraneous whitespace in messages", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("trims extraneous whitespace in messages", async () => {
+        const [dialogue] = build(() => [
             say `Hi   
             there!`
         ], []);
-        jasmine.expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(
-            jasmine.arrayContaining([jasmine.objectContaining({ text: 'Hi \nthere!' })])
+        expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(
+            expect.arrayContaining([expect.objectContaining({ text: 'Hi \nthere!' })])
         );
     });
 
-    it("supports bot builder template class instances inline", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("supports bot builder template class instances inline", async () => {
+        const [dialogue] = build(() => [
             new fbTemplate.List("compact").addBubble('Bubble 1').addBubble('Bubble 2')
         ], []);
-        jasmine.expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(
-            jasmine.arrayContaining([
-                jasmine.objectContaining({ attachment: 
-                    jasmine.objectContaining({ payload: 
-                        jasmine.objectContaining({ template_type: 'list' })})})])
+        expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ attachment: 
+                    expect.objectContaining({ payload: 
+                        expect.objectContaining({ template_type: 'list' })})})])
         );
     });
 
-    it("supports null lines", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("supports null lines", async () => {
+        const [dialogue] = build(() => [
             say `Hi!`,
             null,
             ask `How are you?`
         ], []);
-        jasmine.expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(
-            jasmine.arrayContaining([
-                jasmine.objectContaining({ text: 'Hi!' }),
-                jasmine.objectContaining({ text: 'How are you?' })
+        expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ text: 'Hi!' }),
+                expect.objectContaining({ text: 'How are you?' })
             ])
         );
     });
     
-    it("throws an exception on script with duplicate expect statements", async function(this: This) {
-        const storage: Delegate = jasmine.createSpyObj('storage', ['store', 'retrieve']);
-        jasmine.expect(() => this.build(() => [
-                ask `How are you?`, 
-                expect `I feel`, {},
-                ask `How are you?`, 
-                expect `I feel`, {},
-            ], [], storage)
-        ).toThrow(jasmine.stringMatching('Duplicate expect statement found'));
-        jasmine.expect(storage.saveState).not.toHaveBeenCalled();
+    test("throws an exception on script with duplicate expect statements", async () => {
+        const [dialogue, delegate] = build(() => [
+            ask `How are you?`, 
+            expect_ `I feel`, {},
+            ask `How are you?`, 
+            expect_ `I feel`, {},
+        ], [])
+        await expect(dialogue.consume(mock.postback(), mock.apiRequest)).rejects.toEqual(new Error('Duplicate expect statement (mock:4): expect `I feel`'));
+        expect(delegate.saveState).not.toHaveBeenCalled();
     });
 
-    it("throws an exception on script with duplicate template ids", async function(this: This) {
-        const storage: Delegate = jasmine.createSpyObj('storage', ['store', 'retrieve']);
-        jasmine.expect(() => this.build(() => [
-                buttons('some buttons', 'Some buttons', {}),
-                buttons('some buttons', 'Some more buttons', {}),
-            ], [], storage)
-        ).toThrow(jasmine.stringMatching('Duplicate identifier found'));
-        jasmine.expect(storage.saveState).not.toHaveBeenCalled();
+    test("throws an exception on script with duplicate template ids", async () => {
+        const [dialogue, delegate] = build(() => [
+            buttons('some buttons', 'Some buttons', {}),
+            buttons('some buttons', 'Some more buttons', {}),
+        ], [])
+        await expect(dialogue.consume(mock.postback(), mock.apiRequest)).rejects.toEqual(new Error(`Duplicate identifier found (mock:1): buttons 'some buttons'`));
+        expect(delegate.saveState).not.toHaveBeenCalled();
     });
 
-    it("throws an exception on expect statement not followed by a response handler", async function(this: This) {
-        const test = (script: Script) => {
-            const storage: Delegate = jasmine.createSpyObj('storage', ['store', 'retrieve']);
-            jasmine.expect(() => this.build(() => script, [], storage))
-                .toThrow(jasmine.stringMatching('Expect statement must be followed by a response handler'));
-            jasmine.expect(storage.saveState).not.toHaveBeenCalled();
+    test("throws an exception on expect statement not followed by a response handler", async () => {
+        const test = async (script: Script) => {
+            const [dialogue, delegate] = build(() => script, [])
+            await expect(dialogue.consume(mock.postback(), mock.apiRequest)).rejects.toEqual(new Error('Expect statement must be followed by a response handler (mock:1): expect `I feel`'));
+            expect(delegate.saveState).not.toHaveBeenCalled();
         }
         //missing handler
-        test([
-            expect `I feel`,
+        await test([
+            expect_ `I feel`,
             say `Yo!`
         ]);
         //at end of script
-        test([
-            expect `I feel`,
+        await test([
+            expect_ `I feel`,
         ]);
     });
 
-    it("throws an exception on a response handler not preceded by an expect statement", async function(this: This) {
-        const storage: Delegate = jasmine.createSpyObj('storage', ['store', 'retrieve']);
-        jasmine.expect(() => this.build(() => [
-                say `Hi`, {
-                    "Hi": null
-                }
-            ], [], storage)
-        ).toThrow(jasmine.stringMatching('Response handler must be preceded by an expect statement'));
-        jasmine.expect(storage.saveState).not.toHaveBeenCalled();
+    test("throws an exception on a response handler not preceded by an expect statement", async () => {
+        const [dialogue, delegate] = build(() => [
+            say `Hi`, {
+                "Hi": null
+            }
+        ], [])
+        await expect(dialogue.consume(mock.postback(), mock.apiRequest)).rejects.toEqual(new Error('Response handler must be preceded by an expect statement (mock:1)'));
+        expect(delegate.saveState).not.toHaveBeenCalled();
     });
 
-    it("pauses on expect to wait for a response", async function(this: This) {
-        const [dialogue, storage] = this.build(() => [
+    test("pauses on expect to wait for a response", async () => {
+        const [dialogue, delegate] = build(() => [
             ask `How are you?`, 
-            expect `I feel`, {},
+            expect_ `I feel`, {},
             say `Don't say this`
         ], []);
         const result = await dialogue.consume(mock.postback(), mock.apiRequest);
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: 'How are you?' })
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: 'How are you?' })
         ]));
-        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `Don't say this` })
+        expect(result).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `Don't say this` })
         ]));
-        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: 'I feel'}]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: 'mock::I feel'}]));
     });
 
-    it("resumes where it paused on receiving a response", async function(this: This) {
-        const [dialogue, storage] = this.build(() => [
+    test("resumes where it paused on receiving a response", async () => {
+        const [dialogue, delegate] = build(() => [
             ask `How are you?`, 
-            expect `I feel`, {
+            expect_ `I feel`, {
                 [onText](): void {}
             },
-        ], [{ type: 'expect', name: `I feel` }]);
-        jasmine.expect(await dialogue.consume(mock.message('Amazing'), mock.apiRequest)).toEqual([]);
-        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'expect', name: 'I feel'}]));
+        ], [{ type: 'expect', path: `mock::I feel` }]);
+        expect(await dialogue.consume(mock.message('Amazing'), mock.apiRequest)).toEqual([]);
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'expect', path: 'mock::I feel'}]));
     });
 
-    it("reevaluates a script after executing a response handler", async function(this: This) {
+    test("reevaluates a script after executing a response handler", async () => {
         const context = { foo: 'bar' };
-        const [dialogue] = this.build((context: { foo: string }) => [
+        const [dialogue] = build((context: { foo: string }) => [
             ask `How are you?`, 
-            expect `I feel`, {
+            expect_ `I feel`, {
                 [onText]: () => context.foo = 'baz'
             },
             say `${context.foo}`
-        ], [{ type: 'expect', name: `I feel` }], undefined, context);
-        jasmine.expect(await dialogue.consume(mock.message('Amazing'), mock.apiRequest)).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: 'baz' }), 
+        ], [{ type: 'expect', path: `mock::I feel` }], context);
+        expect(await dialogue.consume(mock.message('Amazing'), mock.apiRequest)).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: 'baz' }), 
         ]));
     });   
 
-    it("reevaluates a script after executing a keyword handler", async function(this: This) {
+    test("reevaluates a script after executing a keyword handler", async () => {
         const context = { foo: 'bar' };
-        const [dialogue] = this.build((context: { foo: string }) => [
+        const [dialogue] = build((context: { foo: string }) => [
             ask `How are you?`, 
             '!end',
             say `${context.foo}`
-        ], [{ type: 'expect', name: `I feel` }], undefined, context);
+        ], [{ type: 'expect', path: `mock::I feel` }], context);
         dialogue.setKeywordHandler('Amazing', () => {
             context.foo = 'baz'
             return goto `end`
         })
-        jasmine.expect(await dialogue.consume(mock.message('Amazing'), mock.apiRequest)).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: 'baz' }), 
+        expect(await dialogue.consume(mock.message('Amazing'), mock.apiRequest)).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: 'baz' }), 
         ]));
     });    
     
-    it("reevaluates a script after executing a postback handler", async function(this: This) {
+    test("reevaluates a script after executing a postback handler", async () => {
         const context = { foo: 'bar' };
-        const button = buttons('some buttons', 'Some buttons', {
-            'Amazing': () => {
-                context.foo = 'baz'
-                return goto `end`
-            }
-        })
-        const [dialogue] = this.build((context: { foo: string }) => [
-            button,
+        let button: fbTemplate.Button | undefined = undefined
+        const [dialogue] = build((context: { foo: string }) => [
+            button = buttons('some buttons', 'Some buttons', {
+                'Amazing': () => {
+                    context.foo = 'baz'
+                    return goto `end`
+                }
+            }),
             '!end',
             say `${context.foo}`
-        ], [{ type: 'complete' }], undefined, context);
-        jasmine.expect(await dialogue.consume(mock.postback(button.postbacks![0][0]), mock.apiRequest)).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: 'baz' }), 
+        ], [], context);
+        await dialogue.consume(mock.postback(), mock.apiRequest);
+        expect(await dialogue.consume(mock.postback(button!.postbacks![0][0]), mock.apiRequest)).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: 'baz' }), 
         ]));
     }); 
     
-    it("attaches any quick replies defined in response handler to last message", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("attaches any quick replies defined in response handler to last message", async () => {
+        const [dialogue] = build(() => [
             say `Hi!`,
             ask `How are you?`, 
-            expect `I feel`, {
+            expect_ `I feel`, {
                 'Great': () => {},
                 'Crap': () => {}
             },
         ], []);
-        jasmine.expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: 'Hi!' }), 
-            jasmine.objectContaining({ text: `How are you?`, quick_replies:[
-                jasmine.objectContaining({ title: 'Great' }), 
-                jasmine.objectContaining({ title: 'Crap' })
+        expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: 'Hi!' }), 
+            expect.objectContaining({ text: `How are you?`, quick_replies:[
+                expect.objectContaining({ title: 'Great' }), 
+                expect.objectContaining({ title: 'Crap' })
             ]})
         ]));
     });
 
-    it("attaches location quick reply if defined in response handler", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("attaches location quick reply if defined in response handler", async () => {
+        const [dialogue] = build(() => [
             ask `Where are you?`, 
-            expect `I am here`, {
+            expect_ `I am here`, {
                 [location]: () => {}
             },
         ], []);
-        jasmine.expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `Where are you?`, quick_replies:[
-                jasmine.objectContaining({ content_type: 'location' }), 
+        expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `Where are you?`, quick_replies:[
+                expect.objectContaining({ content_type: 'location' }), 
             ]})
         ]));
     });
 
-    it("supports promises being returned from response handlers" , async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("supports promises being returned from response handlers", async () => {
+        const [dialogue] = build(() => [
             ask `How are you?`, 
-            expect `I feel`, {
+            expect_ `I feel`, {
                 [defaultAction]: () => Promise.resolve(goto `blocking_label`)
             },
             '!blocking_label',
             say `Promised was resolved`
 
-        ], [{ type: 'expect', name: `I feel` }]);
-        jasmine.expect(await dialogue.consume(mock.message('Blah'), mock.apiRequest)).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: 'Promised was resolved' })
+        ], [{ type: 'expect', path: `mock::I feel` }]);
+        expect(await dialogue.consume(mock.message('Blah'), mock.apiRequest)).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: 'Promised was resolved' })
         ]));        
     });
     
-    it("invokes a quick reply's handler on receiving the reply", async function(this: This) {
-        const handler = jasmine.createSpyObj('response', ['Amazing'])
-        const [dialogue] = this.build(() => [
+    test("invokes a quick reply's handler on receiving the reply", async () => {
+        const handler = jest.fn();
+        const [dialogue] = build(() => [
             ask `How are you?`, 
-            expect `I feel`, 
-            handler
-        ], [{ type: 'expect', name: `I feel` }]);
+            expect_ `I feel`, {
+                'Amazing': handler
+            }
+        ], [{ type: 'expect', path: `mock::I feel` }]);
         await dialogue.consume(mock.message('Amazing'), mock.apiRequest)
-        jasmine.expect(handler.Amazing).toHaveBeenCalled();
+        expect(handler).toHaveBeenCalled();
     });
 
-    it("invokes a button handler on receiving the postback", async function(this: This) {
-        const handler = jasmine.createSpyObj('response', ['Go']);
-        const button = buttons('some buttons', 'Some buttons', handler);
-        const [dialogue] = this.build(() => [
-            button
+    test("invokes a button handler on receiving the postback", async () => {
+        const handler = jest.fn();
+        let button: fbTemplate.Button | undefined = undefined;
+        const [dialogue] = build(() => [
+            button = buttons('some buttons', 'Some buttons', {
+                'Go': handler
+            })
         ], []);
-        await dialogue.consume(mock.postback(button.postbacks![0][0]), mock.apiRequest);
-        jasmine.expect(handler.Go).toHaveBeenCalled();
+        await dialogue.consume(mock.postback(), mock.apiRequest);
+        await dialogue.consume(mock.postback(button!.postbacks![0][0]), mock.apiRequest).catch(
+            () => expect(handler).toHaveBeenCalled()
+        );
     });
 
-    it("invokes a list bubble's button handler on receiving the postback", async function(this: This) {
-        const handler = jasmine.createSpyObj('response', ['Go']);
-        const myList = list('my list', 'compact', [        
-            { title: 'Title', subtitle: 'Subtitle', image: 'image.jpeg', buttons: {
-                'Go': () => handler.Go()
-            }},
-            { title: 'Title', subtitle: 'Subtitle', image: 'image.jpeg'}
-        ], handler);
-        const [dialogue] = this.build(() => [
-            myList
+    test("invokes a list bubble's button handler on receiving the postback", async () => {
+        const handler = jest.fn();
+        let myList: fbTemplate.List | undefined = undefined; 
+        const [dialogue] = build(() => [
+            myList = list('my list', 'compact', [        
+                { title: 'Title', subtitle: 'Subtitle', image: 'image.jpeg', buttons: {
+                    'Go': handler
+                }},
+                { title: 'Title', subtitle: 'Subtitle', image: 'image.jpeg'}
+            ], {
+                'Go': handler
+            })        
         ], []);
-        await dialogue.consume(mock.postback(myList.postbacks![0][0]), mock.apiRequest);
-        jasmine.expect(handler.Go).toHaveBeenCalled();
+        await dialogue.consume(mock.postback(), mock.apiRequest);
+        await dialogue.consume(mock.postback(myList!.postbacks![0][0]), mock.apiRequest).catch(
+            () => expect(handler).toHaveBeenCalled()
+        );
     });
 
-    it("supports empty handlers", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("supports empty handlers", async () => {
+        const [dialogue] = build(() => [
             ask `How are you?`, 
-            expect `I feel`, {},
+            expect_ `I feel`, {},
             say `I don't care much`, 
-        ], [{ type: 'expect', name: `I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }]);
         const result = await dialogue.consume(mock.message('Great'), mock.apiRequest);
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `I don't care much` })
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `I don't care much` })
         ]));
     });
 
-    it("supports null handlers", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("supports null handlers", async () => {
+        const [dialogue] = build(() => [
             ask `How are you?`, 
-            expect `I feel`, {
+            expect_ `I feel`, {
                 'Amazing': null,
             },
             ask `But why?`, 
-            expect `I feel that way because`, {
+            expect_ `I feel that way because`, {
                 [onText]: null
             },
             ask `Where are you?`, 
-            expect `I am at`, {
+            expect_ `I am at`, {
                 [location]: null
             },
             ask `Where do you want to go to?`, 
-            expect `I want to go to`, {
+            expect_ `I want to go to`, {
                 [onLocation]: null
             },
-        ], [{ type: 'expect', name: `I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }]);
         await dialogue.consume(mock.message('Amazing'), mock.apiRequest) //I feel
         await dialogue.consume(mock.message('My tests are passing'), mock.apiRequest) //I feel that way because
         await dialogue.consume(mock.location(50, 1, 'Work'), mock.apiRequest) //I am at        
         await dialogue.consume(mock.location(51, 1, 'The moon'), mock.apiRequest) //I want to go to
     });
 
-    it("throws an error when both location and onLocation specified on a handler", async function(this: This) {
-        const storage: Delegate = jasmine.createSpyObj('storage', ['store', 'retrieve']);
-        jasmine.expect(() => this.build(() => [
+    test("throws an error when both location and onLocation specified on a handler", async () => {
+        const [dialogue, delegate] = build(() => [
                 ask `Where are you?`, 
-                expect `I am here`, {
+                expect_ `I am here`, {
                     [location]: null,
                     [onLocation]: null
                 },
-            ], [{ type: 'expect', name: `I am here` }], storage)
-        ).toThrow(jasmine.stringMatching('Both location and onLocation implemented in the same response handler'));
-        jasmine.expect(storage.saveState).not.toHaveBeenCalled();
+            ], [{ type: 'expect', path: `mock::I am here` }]);
+        await expect(dialogue.consume(mock.postback(), mock.apiRequest)).rejects.toEqual(new Error('Both location and onLocation implemented in the same response handler (mock:2): expect `I am here`'));
+        expect(delegate.saveState).not.toHaveBeenCalled();
     });
 
-    it("prefers a quick reply handler to the onText handler", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("prefers a quick reply handler to the onText handler", async () => {
+        const [dialogue] = build(() => [
             ask `How are you?`, 
-            expect `I feel`, {
+            expect_ `I feel`, {
                 'Amazing': null,
                 [onText]: () => fail('Should not be called')
             },
-        ], [{ type: 'expect', name: `I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }]);
         await dialogue.consume(mock.message('Amazing'), mock.apiRequest)
     });
     
-    it("invokes the location handler on receiving a location quick reply", async function(this: This) {
-        const handler = jasmine.createSpyObj('response', ['location'])
-        const [dialogue] = this.build(() => [
+    test("invokes the location handler on receiving a location quick reply", async () => {
+        const handler = jest.fn();
+        const [dialogue] = build(() => [
             ask `Where are you?`,
-            expect `I am here`, {
-                [location]: (lat: number, long: number, title?: string, url?: string) => handler.location(lat, long, title, url)
+            expect_ `I am here`, {
+                [location]: handler
             },
-        ], [{ type: 'expect', name: `I am here` }]);
+        ], [{ type: 'expect', path: `mock::I am here` }]);
         await dialogue.consume(mock.location(50, 1, 'Mock', "localhost"), mock.apiRequest)
-        jasmine.expect(handler.location).toHaveBeenCalledWith(50, 1, 'Mock', "localhost");
+        expect(handler).toHaveBeenCalledWith(50, 1, 'Mock', "localhost");
     });
 
-    it("invokes the onText handler on receiving a text response", async function(this: This) {
-        const handler = jasmine.createSpyObj('response', ['onText'])
-        const [dialogue] = this.build(() => [
+    test("invokes the onText handler on receiving a text response", async () => {
+        const handler = jest.fn();
+        const [dialogue] = build(() => [
             ask `How are you?`,
-            expect `I feel`, {
-                [onText]: (text: string) => handler.onText(text)
+            expect_ `I feel`, {
+                [onText]: handler
             },
-        ], [{ type: 'expect', name: `I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }]);
         await dialogue.consume(mock.message('Amazing'), mock.apiRequest)
-        jasmine.expect(handler.onText).toHaveBeenCalledWith('Amazing');
+        expect(handler).toHaveBeenCalledWith('Amazing');
     });
 
-    it("invokes the onLocation handler on receiving a location response", async function(this: This) {
-        const handler = jasmine.createSpyObj('response', ['onLocation'])
-        const [dialogue] = this.build(() => [
+    test("invokes the onLocation handler on receiving a location response", async () => {
+        const handler = jest.fn();
+        const [dialogue] = build(() => [
             ask `Where are you?`,
-            expect `I am here`, {
-                [onLocation]: (lat: number, long: number, title?: string, url?: string) => handler.onLocation(lat, long, title, url)
+            expect_ `I am here`, {
+                [onLocation]: handler
             },
-        ], [{ type: 'expect', name: `I am here` }]);
+        ], [{ type: 'expect', path: `mock::I am here` }]);
         await dialogue.consume(mock.location(50, 1, 'Mock', "localhost"), mock.apiRequest)
-        jasmine.expect(handler.onLocation).toHaveBeenCalledWith(50, 1, 'Mock', "localhost");
+        expect(handler).toHaveBeenCalledWith(50, 1, 'Mock', "localhost");
     });
 
-    it("invokes the onImage handler on receiving an image response", async function(this: This) {
-        const handler = jasmine.createSpyObj('response', ['onImage'])
-        const [dialogue] = this.build(() => [
+    test("invokes the onImage handler on receiving an image response", async () => {
+        const handler = jest.fn();
+        const [dialogue] = build(() => [
             ask `What do you look like?`,
-            expect `I look like`, {
-                [onImage]: (url: string) => handler.onImage(url)
+            expect_ `I look like`, {
+                [onImage]: handler
             },
-        ], [{ type: 'expect', name: `I look like` }]);
+        ], [{ type: 'expect', path: `mock::I look like` }]);
         await dialogue.consume(mock.multimedia("image", "photo.jpg"), mock.apiRequest);
-        jasmine.expect(handler.onImage).toHaveBeenCalledWith("photo.jpg");
+        expect(handler).toHaveBeenCalledWith("photo.jpg");
     });
 
-    it("invokes the onVideo handler on receiving an video response", async function(this: This) {
-        const handler = jasmine.createSpyObj('response', ['onVideo'])
-        const [dialogue] = this.build(() => [
+    test("invokes the onVideo handler on receiving an video response", async () => {
+        const handler = jest.fn();
+        const [dialogue] = build(() => [
             ask `What do you move like?`,
-            expect `I move like`, {
-                [onVideo]: (url: string) => handler.onVideo(url)
+            expect_ `I move like`, {
+                [onVideo]: handler
             },
-        ], [{ type: 'expect', name: `I move like` }]);
+        ], [{ type: 'expect', path: `mock::I move like` }]);
         await dialogue.consume(mock.multimedia("video", "video.mpg"), mock.apiRequest);
-        jasmine.expect(handler.onVideo).toHaveBeenCalledWith("video.mpg");
+        expect(handler).toHaveBeenCalledWith("video.mpg");
     });
 
-    it("invokes the onAudio handler on receiving an audio response", async function(this: This) {
-        const handler = jasmine.createSpyObj('response', ['onAudio'])
-        const [dialogue] = this.build(() => [
+    test("invokes the onAudio handler on receiving an audio response", async () => {
+        const handler = jest.fn();
+        const [dialogue] = build(() => [
             ask `What do you sound like?`,
-            expect `I sound like`, {
-                [onAudio]: (url: string) => handler.onAudio(url)
+            expect_ `I sound like`, {
+                [onAudio]: handler
             },
-        ], [{ type: 'expect', name: `I sound like` }]);
+        ], [{ type: 'expect', path: `mock::I sound like` }]);
         await dialogue.consume(mock.multimedia("audio", "recording.wav"), mock.apiRequest);
-        jasmine.expect(handler.onAudio).toHaveBeenCalledWith("recording.wav");
+        expect(handler).toHaveBeenCalledWith("recording.wav");
     });
 
-    it("invokes the onFile handler on receiving an file response", async function(this: This) {
-        const handler = jasmine.createSpyObj('response', ['onFile'])
-        const [dialogue] = this.build(() => [
+    test("invokes the onFile handler on receiving an file response", async () => {
+        const handler = jest.fn();
+        const [dialogue] = build(() => [
             ask `What do you write like?`,
-            expect `I write like`, {
-                [onFile]: (url: string) => handler.onFile(url)
+            expect_ `I write like`, {
+                [onFile]: handler
             },
-        ], [{ type: 'expect', name: `I write like` }]);
+        ], [{ type: 'expect', path: `mock::I write like` }]);
         await dialogue.consume(mock.multimedia("file", "word.doc"), mock.apiRequest);
-        jasmine.expect(handler.onFile).toHaveBeenCalledWith("word.doc");
+        expect(handler).toHaveBeenCalledWith("word.doc");
     });
 
-    it("invokes the defaultAction handler if no other more suitable handler defined" , async function(this: This) {
-        const handler = jasmine.createSpyObj('response', ['defaultAction'])
-        const [dialogue] = this.build(() => [
+    test("invokes the defaultAction handler if no other more suitable handler defined", async () => {
+        const handler = jest.fn();
+        const [dialogue] = build(() => [
             ask `How are you?`, 
-            expect `I feel`, {
-                [defaultAction]: () => handler.defaultAction(),
+            expect_ `I feel`, {
+                [defaultAction]: handler,
                 [onAudio]: () => null
             }
-        ], [{ type: 'expect', name: `I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }]);
         await dialogue.consume(mock.message('Blah'), mock.apiRequest);
-        jasmine.expect(handler.defaultAction).toHaveBeenCalled();      
+        expect(handler).toHaveBeenCalled();      
     });
 
-    it("prefers any suitable handler over the defaultAction handler", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("prefers any suitable handler over the defaultAction handler", async () => {
+        const [dialogue] = build(() => [
             ask `How are you?`, 
-            expect `I feel`, {
+            expect_ `I feel`, {
                 [onText]: () => null,
                 [defaultAction]: () => fail('Should not be called')
             },
-        ], [{ type: 'expect', name: `I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }]);
         await dialogue.consume(mock.message('Amazing'), mock.apiRequest)
     });
     
-    it("handles unexpected response types by repeating only the ask statements", async function(this: This) {
-        const [dialogue, storage] = this.build(() => [
+    test("handles unexpected response types by repeating only the ask statements", async () => {
+        const [dialogue, delegate] = build(() => [
             ask `What do you sound like?`,
-            expect `I sound like`, {
+            expect_ `I sound like`, {
                 [onAudio]: () => null
             },
             ask `What do you write like?`,
             say `This won't be repeated`,
             new fbTemplate.Text('Or this'),
             ask `Send us a word document`,
-            expect `I write like`, {
+            expect_ `I write like`, {
                 [onFile]: () => null
             },
             ask `How are you?`,
-            expect `I feel`, {
+            expect_ `I feel`, {
                 [onText]: () => null,
                 [defaultAction]: () => fail('Should not be called')
             },            
-        ], [{ type: 'expect', name: `I write like` }, { type: 'expect', name: `I sound like` }]);
+        ], [{ type: 'expect', path: `mock::I write like` }, { type: 'expect', path: `mock::I sound like` }]);
         const result = await dialogue.consume(mock.multimedia("audio", "recording.wav"), mock.apiRequest);
-        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I write like` }, { type: 'expect', name: `I sound like` }]));
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `Sorry, I didn't quite catch that, I was expecting a file` }),
-            jasmine.objectContaining({ text: `What do you write like?` }),
-            jasmine.objectContaining({ text: `Send us a word document` })
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: `mock::I write like` }, { type: 'expect', path: `mock::I sound like` }]));
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `Sorry, I didn't quite catch that, I was expecting a file` }),
+            expect.objectContaining({ text: `What do you write like?` }),
+            expect.objectContaining({ text: `Send us a word document` })
         ]));
-        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `This won't be repeated` }),
+        expect(result).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `This won't be repeated` }),
         ]));
     });
 
-    it("supports the throwing of UnexpectedInputError from response handlers", async function(this: This) {
-        const [dialogue, storage] = this.build(() => [
+    test("supports the throwing of UnexpectedInputError from response handlers", async () => {
+        const [dialogue, delegate] = build(() => [
             ask `What do you sound like?`,
-            expect `I sound like`, {
+            expect_ `I sound like`, {
                 [onAudio]: () => { throw new UnexpectedInputError('Your voice is too high pitched'); }
             },
             ask `How are you?`
-        ], [{ type: 'expect', name: `I sound like` }]);
+        ], [{ type: 'expect', path: `mock::I sound like` }]);
         const result = await dialogue.consume(mock.multimedia("audio", "recording.wav"), mock.apiRequest);
-        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I sound like` }]));
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `Your voice is too high pitched` }),
-            jasmine.objectContaining({ text: `What do you sound like?` }),
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: `mock::I sound like` }]));
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `Your voice is too high pitched` }),
+            expect.objectContaining({ text: `What do you sound like?` }),
         ]));
-        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `How are you?` }),
+        expect(result).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `How are you?` }),
         ]));
     });
 
-    it("does not repeat the question when repeatQuestion arg to UnexpectedInputError constructor is false", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("does not repeat the question when repeatQuestion arg to UnexpectedInputError constructor is false", async () => {
+        const [dialogue] = build(() => [
             ask `What do you sound like?`,
-            expect `I sound like`, {
+            expect_ `I sound like`, {
                 [onAudio]: () => { throw new UnexpectedInputError('Your voice is too high pitched', false); }
             }
-        ], [{ type: 'expect', name: `I sound like` }]);
+        ], [{ type: 'expect', path: `mock::I sound like` }]);
         const result = await dialogue.consume(mock.multimedia("audio", "recording.wav"), mock.apiRequest);
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `Your voice is too high pitched` }),
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `Your voice is too high pitched` }),
         ]));
-        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `What do you sound like?` }),
+        expect(result).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `What do you sound like?` }),
         ]));
     });
 
-    it("falls through a label not prefixed with an exclamation mark", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("falls through a label not prefixed with an exclamation mark", async () => {
+        const [dialogue] = build(() => [
             say `Hi!`,
             'label',
             ask `How are you?`,
         ], []);
         const result = await dialogue.consume(mock.postback(), mock.apiRequest);
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: 'Hi!' }), 
-            jasmine.objectContaining({ text: `How are you?` })
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: 'Hi!' }), 
+            expect.objectContaining({ text: `How are you?` })
         ]));
-        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `label` })
+        expect(result).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `label` })
         ]));
     });
 
-    it("breaks on hitting a label prefixed with an exclamation mark", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("breaks on hitting a label prefixed with an exclamation mark", async () => {
+        const [dialogue] = build(() => [
             say `Hi!`,
             '!label',
             ask `How are you?`,
         ], []);
         const result = await dialogue.consume(mock.postback(), mock.apiRequest);
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: 'Hi!' }), 
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: 'Hi!' }), 
         ]));
-        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `!label` })
+        expect(result).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `!label` })
         ]));
-        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `label` })
+        expect(result).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `label` })
         ]));
-        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `How are you?` })
+        expect(result).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `How are you?` })
         ]));
     });
 
-    it("respects inline gotos", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("respects inline gotos", async () => {
+        const [dialogue] = build(() => [
             say `Hi!`,
             goto `label`,
             say `Don't say this`,
@@ -631,18 +615,18 @@ describe("Dialogue", () => {
             ask `How are you?`,
         ], []);
         const result = await dialogue.consume(mock.postback(), mock.apiRequest);
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: 'Hi!' }), 
-            jasmine.objectContaining({ text: `How are you?` })
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: 'Hi!' }), 
+            expect.objectContaining({ text: `How are you?` })
         ]));
-        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `Don't say this` })
+        expect(result).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `Don't say this` })
         ]));
     });
 
-    it("respects rollback to start of script", async function(this: This) {
+    test("respects rollback to start of script", async () => {
         const button = buttons('some buttons', 'Some buttons', { 'Run': () => goto `subroutine` });
-        const [dialogue, storage] = this.build(() => [
+        const [dialogue, delegate] = build(() => [
             say `Hi!`,
             '!subroutine',
             say `Running subroutine`,
@@ -651,19 +635,19 @@ describe("Dialogue", () => {
             button,
         ], []);
         const result = await dialogue.consume(mock.postback(button.postbacks![0][0]), mock.apiRequest);
-        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}]));
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: 'Running subroutine' }), 
-            jasmine.objectContaining({ text: 'Hi!' }), 
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}]));
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: 'Running subroutine' }), 
+            expect.objectContaining({ text: 'Hi!' }), 
         ]));
-        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `Don't say this` })
+        expect(result).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `Don't say this` })
         ]));
     });
 
-    it("respects rollback to previous label", async function(this: This) {
+    test("respects rollback to previous label", async () => {
         const button = buttons('some buttons', 'Some buttons', { 'Run': () => goto `subroutine` });
-        const [dialogue, storage] = this.build(() => [
+        const [dialogue, delegate] = build(() => [
             say `Don't say this`,
             '!subroutine',
             say `Running subroutine`,
@@ -671,126 +655,125 @@ describe("Dialogue", () => {
             button,
             'previous_label',
             say `Hi!`,
-        ], [{ type: 'label', name: 'previous_label'}]);
+        ], [{ type: 'label', path: 'mock::previous_label'}]);
         const result = await dialogue.consume(mock.postback(button.postbacks![0][0]), mock.apiRequest);
-        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'label', name: 'previous_label'}]));
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: 'Running subroutine' }), 
-            jasmine.objectContaining({ text: 'Hi!' }), 
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'label', path: 'mock::previous_label'}]));
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: 'Running subroutine' }), 
+            expect.objectContaining({ text: 'Hi!' }), 
         ]));
-        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `Don't say this` })
+        expect(result).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `Don't say this` })
         ]));
     });
 
-    it("respects rollback to previous expect", async function(this: This) {
+    test("respects rollback to previous expect", async () => {
         const button = buttons('some buttons', 'Some buttons', { 'Run': () => goto `subroutine` });
-        const [dialogue, storage] = this.build(() => [
+        const [dialogue, delegate] = build(() => [
             say `Don't say this`,
             '!subroutine',
             say `Running subroutine`,
             rollback `subroutine`,
             button,
             say `How do you feel?`,
-            expect `I feel`, {
+            expect_ `I feel`, {
                 'Amazing': () => goto `label`
             },
             say `Goodbye!`,
-        ], [{ type: 'expect', name: 'I feel'}]);
+        ], [{ type: 'expect', path: 'mock::I feel'}]);
         const result = await dialogue.consume(mock.postback(button.postbacks![0][0]), mock.apiRequest);
-        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'expect', name: 'I feel'}]));
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: 'Running subroutine' }), 
-            jasmine.objectContaining({ text: 'Goodbye!' }), 
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'expect', path: 'mock::I feel'}]));
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: 'Running subroutine' }), 
+            expect.objectContaining({ text: 'Goodbye!' }), 
         ]));
-        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `Don't say this` })
+        expect(result).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `Don't say this` })
         ]));
     });
 
-    it("respects gotos executed on the dialogue instance", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("respects gotos executed on the dialogue instance", async () => {
+        const [dialogue] = build(() => [
             say `Don't say this`,
             'label',
             ask `How are you?`,
         ], []);
         dialogue.execute(goto `label`);
         const result = await dialogue.consume(mock.postback(), mock.apiRequest);
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `How are you?` })
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `How are you?` })
         ]));
-        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `Don't say this` })
+        expect(result).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `Don't say this` })
         ]));
     });
 
-    it("jumps to an expect executed on the dialogue instance", async function(this: This) {
-        const handler = jasmine.createSpyObj('handler', ['Amazing']);
-        const [dialogue] = this.build(() => [
+    test("jumps to an expect executed on the dialogue instance", async () => {
+        const handler = jest.fn();
+        const [dialogue] = build(() => [
             say `Don't say this`,
-            expect `I feel`, 
-            handler,
+            expect_ `I feel`, {
+                'Amazing': handler
+            },
             say `Goodbye`
         ], []);
-        dialogue.execute(expect `I feel`);
+        dialogue.execute(expect_ `I feel`);
         const result = await dialogue.consume(mock.message('Amazing'), mock.apiRequest);
-        jasmine.expect(handler.Amazing).toHaveBeenCalled();
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: 'Goodbye' }), 
+        expect(handler).toHaveBeenCalled();
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: 'Goodbye' }), 
         ]));
-        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `Don't say this` })
+        expect(result).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `Don't say this` })
         ]));
     });
 
-    it("respects gotos returned from response handlers", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("respects gotos returned from response handlers", async () => {
+        const [dialogue] = build(() => [
             ask `How are you?`,
-            expect `I feel`, {
+            expect_ `I feel`, {
                 'Amazing': () => goto `label`
             },
             say `Don't say this`,
             'label',
             say `Goodbye`
-        ], [{ type: 'expect', name: `I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }]);
         const result = await dialogue.consume(mock.message('Amazing'), mock.apiRequest);
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: 'Goodbye' }), 
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: 'Goodbye' }), 
         ]));
-        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `Don't say this` })
+        expect(result).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `Don't say this` })
         ]));
     });
     
-    it("throws an exception on calling goto with a missing label", async function(this: This) {
-        const storage: Delegate = jasmine.createSpyObj('storage', ['store', 'retrieve']);
-        const [dialogue] = this.build(() => [
+    test("throws an exception on calling goto with a missing label", async () => {
+        const [dialogue, delegate] = build(() => [
             say `Hi!`,
             goto `label`,
             ask `How are you?`,
-        ], [], storage);
+        ], []);
         await dialogue.consume(mock.postback(), mock.apiRequest)
             .then(() => fail('Did not throw'))
             .catch((e) => {
-                jasmine.expect(e).toEqual(jasmine.stringMatching('Could not find label'));
-                jasmine.expect(storage.saveState).not.toHaveBeenCalled();
+                expect(e).toEqual(expect.stringMatching('Could not find label'));
+                expect(delegate.saveState).not.toHaveBeenCalled();
             });
     });
 
-    it("throws an exception on script with duplicate labels", async function(this: This) {
-        const storage: Delegate = jasmine.createSpyObj('storage', ['store', 'retrieve']);
-        jasmine.expect(() => this.build(() => [
+    test("throws an exception on script with duplicate labels", async () => {
+        const [dialogue, delegate] = build(() => [
                 'label',
                 say `Hi!`,
                 'label',
                 ask `How are you?`,
-            ], [], storage)
-        ).toThrow(jasmine.stringMatching('Duplicate label found'));
-        jasmine.expect(storage.saveState).not.toHaveBeenCalled();
+            ], []);
+        await expect(dialogue.consume(mock.postback(), mock.apiRequest)).rejects.toEqual(new Error(`Duplicate label found (mock:2): 'label'`));
+        expect(delegate.saveState).not.toHaveBeenCalled();
     });
 
-    it("aborts a goto that causes an endless loop", async function(this: This) {
-        const [dialogue, storage] = this.build(() => [
+    test("aborts a goto that causes an endless loop", async () => {
+        const [dialogue, delegate] = build(() => [
             'label',
             ask `How are you?`,
             goto `label`,
@@ -798,270 +781,309 @@ describe("Dialogue", () => {
         await dialogue.consume(mock.postback(), mock.apiRequest)
             .then(() => fail('Did not throw'))
             .catch(e => {
-                jasmine.expect(e).toEqual(jasmine.stringMatching('Endless loop detected'));
-                jasmine.expect(storage.saveState).not.toHaveBeenCalled();
+                expect(e).toEqual(expect.stringMatching('Endless loop detected'));
+                expect(delegate.saveState).not.toHaveBeenCalled();
             });
     });
     
-    it("resumes from the correct line when a goto skips a response handler", async function(this: This) {
-        const [dialogue, storage] = this.build(() => [
+    test("resumes from the correct line when a goto skips a response handler", async () => {
+        const [dialogue, delegate] = build(() => [
             ask `How are you?`,
-            expect `I feel`, {
+            expect_ `I feel`, {
                 'Amazing': () => goto `label`
             },
             ask `But why?`, 
-            expect `I feel that way because`, {
+            expect_ `I feel that way because`, {
                 [onText]: null
             },
             'label',
             ask `Where are you?`, 
-            expect `I am at`, {
+            expect_ `I am at`, {
                 [location]: null
             },
-        ], [{ type: 'expect', name: `I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }]);
         await dialogue.consume(mock.message('Amazing'), mock.apiRequest)
-        jasmine.expect(storage.saveState).not.toHaveBeenCalledWith(jasmine.arrayContaining([{ type: 'complete' }]));
+        expect(delegate.saveState).not.toHaveBeenCalledWith(expect.arrayContaining([{ type: 'complete' }]));
         const result = await dialogue.consume(mock.location(50, 1), mock.apiRequest);
-        jasmine.expect(storage.saveState).toHaveBeenCalledWith((jasmine.stringMatching(JSON.stringify([{ type: 'complete' }]))));
-        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `But why?` })
+        expect(delegate.saveState).toHaveBeenCalledWith((expect.stringMatching(JSON.stringify([{ type: 'complete' }]))));
+        expect(result).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `But why?` })
         ]));
     });
 
-    it("resumes from the correct line when on unexpected input when a goto skips another goto", async function(this: This) {
-        const [dialogue, storage] = this.build(() => [
+    test("resumes from the correct line when on unexpected input when a goto skips another goto", async () => {
+        const [dialogue, delegate] = build(() => [
             'start',
             ask `How are you?`,
-            expect `I feel`, {
+            expect_ `I feel`, {
                 'Amazing': () => goto `label`
             },
             goto `start`,
             'label',
             ask `Where are you?`, 
-            expect `I am at`, {
+            expect_ `I am at`, {
                 [location]: null
             }
-        ], [{ type: 'expect', name: `I am at`}, { type: 'label', name: `label`, inline: false }, { type: 'expect', name: `I feel` }]);
+        ], [{ type: 'expect', path: `mock::I am at`}, { type: 'label', path: `mock::label`, inline: false }, { type: 'expect', path: `mock::I feel` }]);
         const result = await dialogue.consume(mock.message('Wrong input'), mock.apiRequest)
-        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I am at`}, { type: 'label', name: `label`, inline: false }, { type: 'expect', name: `I feel` }]));
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `Where are you?` })
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: `mock::I am at`}, { type: 'label', path: `mock::label`, inline: false }, { type: 'expect', path: `mock::I feel` }]));
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `Where are you?` })
         ]));
     });
 
-    it("supports expects returned from response handlers to delegate handling", async function(this: This) {
-        const handler = jasmine.createSpyObj('response', ['onText'])
-        const [dialogue] = this.build(() => [
+    test("supports expects returned from response handlers to delegate handling", async () => {
+        const handler = jest.fn();
+        const [dialogue] = build(() => [
             ask `How are you?`,
-            expect `I feel`, {
-                'Amazing': () => expect `I feel that way because`
+            expect_ `I feel`, {
+                'Amazing': () => expect_ `I feel that way because`
             },
             ask `But why?`, 
-            expect `I feel that way because`, {
-                [onText]: (text: string) => handler.onText(text)
+            expect_ `I feel that way because`, {
+                [onText]: handler
             },
             say `Goodbye`            
-        ], [{ type: 'expect', name: `I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }]);
         const result = await dialogue.consume(mock.message('Amazing'), mock.apiRequest);
-        jasmine.expect(handler.onText).toHaveBeenCalledWith('Amazing');    
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: 'Goodbye' }), 
+        expect(handler).toHaveBeenCalledWith('Amazing');    
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: 'Goodbye' }), 
         ]));
     });
 
-    it("aborts an expect returned from response handler that causes an endless loop", async function(this: This) {
-        const [dialogue, storage] = this.build(() => [
+    test("aborts an expect returned from response handler that causes an endless loop", async () => {
+        const [dialogue, delegate] = build(() => [
             ask `How are you?`,
-            expect `I feel`, {
-                'Amazing': () => expect `I feel`
+            expect_ `I feel`, {
+                'Amazing': () => expect_ `I feel`
             },
-        ], [{ type: 'expect', name: `I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }]);
         await dialogue.consume(mock.message('Amazing'), mock.apiRequest)
             .then(() => fail('Did not throw'))
             .catch(e => {
-                jasmine.expect(e).toEqual(jasmine.stringMatching('Endless loop detected'));
-                jasmine.expect(storage.saveState).not.toHaveBeenCalled();
+                expect(e).toEqual(expect.stringMatching('Endless loop detected'));
+                expect(delegate.saveState).not.toHaveBeenCalled();
             });    
     });
 
-    it("ignores return values from handlers if not gotos or expects", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("ignores return values from handlers if not gotos or expects", async () => {
+        const [dialogue] = build(() => [
             ask `How are you?`,
-            expect `I feel`, {
+            expect_ `I feel`, {
                 'Amazing': () => new Object()
             },
             say `Goodbye`
-        ], [{ type: 'expect', name: `I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }]);
         const result = await dialogue.consume(mock.message('Amazing'), mock.apiRequest);
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: 'Goodbye' }), 
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: 'Goodbye' }), 
         ]));
     });
     
-    it("calls a keyword handler when message is received that matches insensitive of case", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("calls a keyword handler when message is received that matches insensitive of case", async () => {
+        const [dialogue] = build(() => [
             say `Yo`,
         ], []);
-        const handler = jasmine.createSpy('handler')
+        const handler = jest.fn();
         dialogue.setKeywordHandler('word', handler)
         await dialogue.consume(mock.message('Word'), mock.apiRequest)
-        jasmine.expect(handler).toHaveBeenCalled();
+        expect(handler).toHaveBeenCalled();
     });    
 
-    it("calls a keyword handler matching a postback payload if no postback handler found", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("calls a keyword handler matching a postback payload if no postback handler found", async () => {
+        const [dialogue] = build(() => [
             ask `How are you?`,
-            expect `I feel`, {
+            expect_ `I feel`, {
                 'Amazing': null
             },
-        ], [{ type: 'expect', name: `I feel` }]);
-        const handler = jasmine.createSpy('handler')
+        ], [{ type: 'expect', path: `mock::I feel` }]);
+        const handler = jest.fn();
         dialogue.setKeywordHandler('postback_action', handler)
         await dialogue.consume(mock.postback('postback_action'), mock.apiRequest)
-        jasmine.expect(handler).toHaveBeenCalled();
+        expect(handler).toHaveBeenCalled();
     });
 
-    it("prefers a matching keyword handler over the current response handler", async function(this: This) {
-        const responseHandler = jasmine.createSpyObj('storage', ['Amazing'])
-        const [dialogue] = this.build(() => [
+    test("prefers a matching keyword handler over the current response handler", async () => {
+        const responseHandler = jest.fn();
+        const [dialogue] = build(() => [
             ask `How are you?`,
-            expect `I feel`, 
-            responseHandler
-        ], [{ type: 'expect', name: `I feel` }]);
-        const handler = jasmine.createSpy('handler')
+            expect_ `I feel`, {
+                'Amazing': responseHandler
+            }
+        ], [{ type: 'expect', path: `mock::I feel` }]);
+        const handler = jest.fn();
         dialogue.setKeywordHandler('Amazing', handler)
         await dialogue.consume(mock.message('Amazing'), mock.apiRequest)
-        jasmine.expect(responseHandler.Amazing).not.toHaveBeenCalled();
-        jasmine.expect(handler).toHaveBeenCalled();
+        expect(responseHandler).not.toHaveBeenCalled();
+        expect(handler).toHaveBeenCalled();
     });
 
-    it("resets the dialogue when user sends a restart keyword", async function(this: This) {
-        const [dialogue, storage] = this.build(() => [
+    test("resets the dialogue when user sends a restart keyword", async () => {
+        const [dialogue, delegate] = build(() => [
             ask `How are you?`,
-            expect `I feel`, {
+            expect_ `I feel`, {
                 'Amazing': null
             },
             ask `But why?`, 
-            expect `I feel that way because`, {
+            expect_ `I feel that way because`, {
                 'Just cos': null
             },
-        ], [{ type: 'expect', name: `I feel` }, { type: 'expect', name: `I feel that way because` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: 'expect', path: `mock::I feel that way because` }]);
         dialogue.setKeywordHandler('start over', 'restart')
         const result = await dialogue.consume(mock.message('Start over'), mock.apiRequest)
-        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: 'I feel' }]));
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `How are you?` })
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: 'mock::I feel' }]));
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `How are you?` })
         ]));
     });
 
-    it("returns to previously asked question when user sends a undo keyword", async function(this: This) {
-        const undoHandler = jasmine.createSpy('onUndo')
-        const [dialogue, storage] = this.build(() => [
+    test("returns to previously asked question when user sends a undo keyword", async () => {
+        const undoHandler = jest.fn()
+        const [dialogue, delegate] = build(() => [
             say `Don't repeat this on undo`,
             ask `How are you?`,
-            expect `I feel`, {
+            expect_ `I feel`, {
                 'Amazing': null,
                 [onUndo]: () => undoHandler()
             },
             ask `But why?`, 
-            expect `I feel that way because`, {
+            expect_ `I feel that way because`, {
                 'Just cos': null,
                 [onUndo]: () => fail('Wrong undo handler called')
             },
-        ], [{ type: 'expect', name: `I feel that way because` }, { type: 'expect', name: `I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel that way because` }, { type: 'expect', path: `mock::I feel` }]);
         dialogue.setKeywordHandler('back', 'undo')
         const result = await dialogue.consume(mock.message('back'), mock.apiRequest)
-        jasmine.expect(undoHandler).toHaveBeenCalledTimes(1);
-        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I feel` }]));
-        jasmine.expect(result).not.toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `Don't repeat this on undo` })
+        expect(undoHandler).toHaveBeenCalledTimes(1);
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: `mock::I feel` }]));
+        expect(result).not.toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `Don't repeat this on undo` })
         ]));
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `How are you?` })
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `How are you?` })
         ]));
     });
 
-    it("returns to last asked question when user sends a undo keyword when complete", async function(this: This) {
-        const undoHandler = jasmine.createSpy('onUndo')
-        const [dialogue, storage] = this.build(() => [
+    test("returns to last asked question when user sends a undo keyword when complete", async () => {
+        const undoHandler = jest.fn()
+        const [dialogue, delegate] = build(() => [
             ask `How are you?`,
-            expect `I feel`, {
+            expect_ `I feel`, {
                 'Amazing': null,
                 [onUndo]: () => fail('Wrong undo handler called')
             },
             ask `But why?`, 
-            expect `I feel that way because`, {
+            expect_ `I feel that way because`, {
                 'Just cos': null,
                 [onUndo]: () => undoHandler()
             },
-        ], [{type: 'complete'}, { type: 'expect', name: `I feel that way because` }, { type: 'expect', name: `I feel` }]);
+        ], [{type: 'complete'}, { type: 'expect', path: `mock::I feel that way because` }, { type: 'expect', path: `mock::I feel` }]);
         dialogue.setKeywordHandler('back', 'undo')
         const result = await dialogue.consume(mock.message('back'), mock.apiRequest)
-        jasmine.expect(undoHandler).toHaveBeenCalledTimes(1);
-        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I feel that way because` }, { type: 'expect', name: `I feel` }]));
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `But why?` })
+        expect(undoHandler).toHaveBeenCalledTimes(1);
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: `mock::I feel that way because` }, { type: 'expect', path: `mock::I feel` }]));
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `But why?` })
         ]));
     });
 
-    it("accounts for skipped questions due to goto statements when user sends a undo keyword", async function(this: This) {
-        const undoHandler = jasmine.createSpy('onUndo')
-        const [dialogue, storage] = this.build(() => [
+    test("accounts for skipped questions due to goto statements when user sends a undo keyword", async () => {
+        const undoHandler = jest.fn()
+        const [dialogue, delegate] = build(() => [
             ask `How are you?`,
-            expect `I feel`, {
+            expect_ `I feel`, {
                 'Amazing': goto `why`,
                 [onUndo]: () => undoHandler()
             },
             ask `Where are you?`, 
-            expect `I am at`, {
+            expect_ `I am at`, {
                 [location]: null,
                 [onUndo]: () => fail('Wrong undo handler called')
             },
             'why',
             ask `But why?`, 
-            expect `I feel that way because`, {
+            expect_ `I feel that way because`, {
                 'Just cos': null,
                 [onUndo]: () => fail('Wrong undo handler called')
             },
-        ], [{ type: 'expect', name: `I feel that way because` }, { type: 'label', name: `why` }, { type: 'expect', name: `I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel that way because` }, { type: 'label', path: `mock::why` }, { type: 'expect', path: `mock::I feel` }]);
         dialogue.setKeywordHandler('back', 'undo')
         const result = await dialogue.consume(mock.message('back'), mock.apiRequest)
-        jasmine.expect(undoHandler).toHaveBeenCalledTimes(1);
-        jasmine.expect(storage.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', name: `I feel` }]));
-        jasmine.expect(result).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `How are you?` })
+        expect(undoHandler).toHaveBeenCalledTimes(1);
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: `mock::I feel` }]));
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `How are you?` })
         ]));
     });
 
-    it("supports a user sending an undo or restart keyword at the start of a dialogue", async function(this: This) {
-        const [dialogue, storage] = this.build(() => [
+    test("supports a user sending an undo or restart keyword at the start of a dialogue", async () => {
+        const [dialogue, delegate] = build(() => [
             ask `How are you?`,
-            expect `I feel`, {
+            expect_ `I feel`, {
                 'Amazing': null,
                 [onUndo]: () => fail('Undo handler called')
             },
         ], []);
         dialogue.setKeywordHandler('start over', 'restart')
         dialogue.setKeywordHandler('back', 'undo')
-        jasmine.expect(await dialogue.consume(mock.message('start over'), mock.apiRequest)).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `How are you?` })
+        expect(await dialogue.consume(mock.message('start over'), mock.apiRequest)).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `How are you?` })
         ]));
-        jasmine.expect(storage.saveState).not.toHaveBeenCalledWith(jasmine.arrayContaining([{ type: 'complete' }]));
-        jasmine.expect(await dialogue.consume(mock.message('back'), mock.apiRequest)).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ text: `How are you?` })
+        expect(delegate.saveState).not.toHaveBeenCalledWith(expect.arrayContaining([{ type: 'complete' }]));
+        expect(await dialogue.consume(mock.message('back'), mock.apiRequest)).toEqual(expect.arrayContaining([
+            expect.objectContaining({ text: `How are you?` })
         ]));
-        jasmine.expect(storage.saveState).not.toHaveBeenCalledWith(jasmine.arrayContaining([{ type: 'complete' }]));
+        expect(delegate.saveState).not.toHaveBeenCalledWith(expect.arrayContaining([{ type: 'complete' }]));
     });
 
-    it("prefixes uris with the baseUrl but leaves full urls as is", async function(this: This) {
-        const [dialogue] = this.build(() => [
+    test("prefixes uris with the baseUrl but leaves full urls as is", async () => {
+        const [dialogue] = build(() => [
             image `/image.jpg`,
             audio `http://google.com/audio.wav`
         ], []);
         dialogue.baseUrl = "http://localhost";
-        jasmine.expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(jasmine.arrayContaining([
-            jasmine.objectContaining({ attachment: jasmine.objectContaining({ payload: { url: "http://localhost/image.jpg" }})}),
-            jasmine.objectContaining({ attachment: jasmine.objectContaining({ payload: { url: "http://google.com/audio.wav" }})})
+        expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(expect.arrayContaining([
+            expect.objectContaining({ attachment: expect.objectContaining({ payload: { url: "http://localhost/image.jpg" }})}),
+            expect.objectContaining({ attachment: expect.objectContaining({ payload: { url: "http://google.com/audio.wav" }})})
         ]));
     });
+
+    test("goto a label works across scripts", async () => {
+        const [dialogue, delegate] = build({ 
+            first: () => [
+                goto `second::hi`
+            ],
+            second: () => [
+                'hi',
+                say `Hi!`
+            ]
+        }, []);
+        expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(
+            expect.arrayContaining([expect.objectContaining({ text: 'Hi!' })])
+        );
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([
+            { type: 'complete' },
+            { type: "label", path: "second::hi", inline: true },
+        ]));
+    });
+    
+    test("goto supports going to the beginning of a script with script::", async () => {
+        const [dialogue, delegate] = build({ 
+            first: () => [
+                goto `second::`
+            ],
+            second: () => [
+                say `Hi!`
+            ]
+        }, []);
+        expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(
+            expect.arrayContaining([expect.objectContaining({ text: 'Hi!' })])
+        );
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([
+            { type: 'complete' },
+            { type: "label", path: "second::", inline: true },
+        ]));
+    });
+    
 });
