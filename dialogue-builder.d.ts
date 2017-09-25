@@ -50,8 +50,12 @@ export declare function video(template: TemplateStringsArray, ...substitutions: 
 export declare function image(template: TemplateStringsArray, ...substitutions: any[]): Attachment;
 export declare function file(template: TemplateStringsArray, ...substitutions: any[]): Attachment;
 export declare type ButtonHandler = {
-    [title: string]: () => Goto | void | Promise<Goto | void>;
+    [title: string]: URLButton | (() => Goto | void | Promise<Goto | void>);
 };
+export interface URLButton {
+    url: string;
+    webviewHeightRatio?: 'compact' | 'tall' | 'full';
+}
 export interface Bubble {
     title: string;
     subtitle?: string;
@@ -61,12 +65,12 @@ export interface Bubble {
 export declare function buttons(id: string, text: string, handler: ButtonHandler): Button;
 export declare function list(id: string, type: 'compact' | 'large', bubbles: Bubble[], handler?: ButtonHandler): List;
 export declare function generic(id: string, type: 'horizontal' | 'square', bubbles: Bubble[]): Generic;
-export interface Delegate<T> {
-    loadScript(name: string): (...context: T[]) => Script;
+export interface Delegate {
+    loadScript(name: string): Script;
     loadState(): string | undefined | Promise<string | undefined>;
     saveState(state: string): any | Promise<any>;
 }
-export declare class Dialogue<T> {
+export declare class Dialogue {
     static currentScript: string;
     private readonly handlers;
     private readonly state;
@@ -74,10 +78,10 @@ export declare class Dialogue<T> {
     private script;
     private outputFilter;
     baseUrl: string;
-    constructor(defaultScript: string, delegate: Delegate<T>, ...context: T[]);
+    constructor(defaultScript: string, delegate: Delegate);
     execute(directive: Directive): Promise<void>;
     setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto | Promise<void | Goto>)): void;
-    supply(lambdaContext: any, unexpectedInput?: UnexpectedInputError): Promise<string[]>;
+    resume(lambdaContext: any, unexpectedInput?: UnexpectedInputError): Promise<string[]>;
     consume(message: Message, apiRequest: Request): Promise<any[]>;
 }
 export declare namespace mock {

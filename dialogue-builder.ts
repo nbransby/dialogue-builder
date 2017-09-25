@@ -99,12 +99,16 @@ export function image(template: TemplateStringsArray, ...substitutions: any[]): 
 export function file(template: TemplateStringsArray, ...substitutions: any[]): Attachment {
     return new Attachment(String.raw(template, ...substitutions), 'file');
 }
-export type ButtonHandler = { [title: string]: () =>  Goto | void | Promise<Goto | void> }
+export type ButtonHandler = { [title: string]: URLButton | (() =>  Goto | void | Promise<Goto | void>) }
+export interface URLButton {
+    url: string
+    webviewHeightRatio?: 'compact'|'tall'|'full'
+}
 export interface Bubble {
     title: string, 
     subtitle?: string, 
     image?: string, 
-    buttons?: ButtonHandler 
+    buttons?: ButtonHandler
 }
 export function buttons(id: string, text: string, handler: ButtonHandler): Button {
     if(!Dialogue.currentScript) throw new Error(`buttons can only be invoked from within a script array`);
@@ -112,8 +116,13 @@ export function buttons(id: string, text: string, handler: ButtonHandler): Butto
     buttons.identifier = `buttons '${id}'`;
     buttons.postbacks = [];
     Object.keys(handler).forEach(key => {
-        const payload = `'${Dialogue.currentScript}::${key}' button in buttons '${id}'`;
-        buttons.addButton(key, payload).postbacks!.push([payload, handler[key]]);
+        const button = handler[key];
+        if(typeof button === "function") {
+            const payload = `'${Dialogue.currentScript}::${key}' button in buttons '${id}'`;
+            buttons.addButton(key, payload).postbacks!.push([payload, button]);
+        } else {
+            buttons.addButton(key, button.url)
+        }
     });
     return buttons;
 }
@@ -126,17 +135,32 @@ export function list(id: string, type: 'compact'|'large', bubbles: Bubble[], han
         list.addBubble(bubble.title, bubble.subtitle);
         if(bubble.image) list.addImage(bubble.image);
         if(bubble.buttons &&  bubble.buttons[defaultAction]) {
-            const payload = `default action of ${ordinals[index]} bubble of list '${id}'`;
-            list.addDefaultAction(payload).postbacks!.push([payload, bubble.buttons[defaultAction]]);
+            const button = bubble.buttons[defaultAction];
+            if(typeof button === "function") {
+                const payload = `default action of ${ordinals[index]} bubble of list '${id}'`;
+                list.addDefaultAction(payload).postbacks!.push([payload, button]);
+            } else {
+                list.addDefaultAction(button.url)
+            }
         }
         bubble.buttons && Object.keys(bubble.buttons).forEach(key => {
-            const payload = `'${key}' button in ${ordinals[index]} bubble of list '${id}'`;
-            list.addButton(key, payload).postbacks!.push([payload, bubble.buttons![key]])
+            const button = bubble.buttons![key];
+            if(typeof button === "function") {
+                const payload = `'${key}' button in ${ordinals[index]} bubble of list '${id}'`;
+                list.addButton(key, payload).postbacks!.push([payload, button])
+            } else {
+                list.addButton(key, button.url)
+            }
         });
     });
     handler && Object.keys(handler).forEach(key => {
-        const payload = `'${key}' button in list '${id}'`;
-        list.addListButton(key, payload).postbacks!.push([payload, handler[key]]);
+        const button = handler[key];
+        if(typeof button === "function") {
+            const payload = `'${key}' button in list '${id}'`;
+            list.addListButton(key, payload).postbacks!.push([payload, button]);
+        } else {
+            list.addButton(key, button.url)
+        }
     });
     return list;
 }
@@ -150,30 +174,40 @@ export function generic(id: string, type: 'horizontal'|'square', bubbles: Bubble
         generic.addBubble(bubble.title, bubble.subtitle);
         if(bubble.image) generic.addImage(bubble.image);
         if(bubble.buttons && bubble.buttons[defaultAction]) {
-            const payload = `default action of ${ordinals[index]} bubble of generic '${id}'`;
-            generic.addDefaultAction(payload).postbacks!.push([payload, bubble.buttons[defaultAction]]);
+            const button = bubble.buttons[defaultAction];
+            if(typeof button === "function") {
+                const payload = `default action of ${ordinals[index]} bubble of generic '${id}'`;
+                generic.addDefaultAction(payload).postbacks!.push([payload, button]);
+            } else {
+                generic.addDefaultAction(button.url)
+            }
         }
         bubble.buttons && Object.keys(bubble.buttons).forEach(key => {
-            const payload = `'${key}' button in ${ordinals[index]} bubble of generic '${id}'`;
-            generic.addButton(key, payload, '').postbacks!.push([payload, bubble.buttons![key]])
+            const button = bubble.buttons![key];
+            if(typeof button === "function") {
+                const payload = `'${key}' button in ${ordinals[index]} bubble of generic '${id}'`;
+                generic.addButton(key, payload).postbacks!.push([payload, button])
+            } else {
+                generic.addButton(key, button.url)
+            }
         });
     });
     return generic;
 }
-export interface Delegate<T> {
-    loadScript(name: string): (...context: T[]) => Script
+export interface Delegate {
+    loadScript(name: string): Script
     loadState(): string | undefined | Promise<string | undefined>
     saveState(state: string): any | Promise<any>
 }
-export class Dialogue<T> {
+export class Dialogue {
     static currentScript: string
     private readonly handlers: Map<string, () =>  void | Goto | Promise<Goto | void>> = new Map();
     private readonly state: State
-    private readonly loadScript: (name: string) => (...context: T[]) => Script
+    private readonly loadScript: (name: string) => Script
     private script: Script
     private outputFilter: (o: BaseTemplate) => boolean
     public baseUrl: string
-    constructor(defaultScript: string, delegate: Delegate<T>, ...context: T[]) {
+    constructor(defaultScript: string, delegate: Delegate) {
         const labels = new Map();
         const expects = new Map();
         const jumps: [number, Goto][] = [];        
@@ -182,10 +216,10 @@ export class Dialogue<T> {
         this.state = new State(labels, expects, {
             loadState: delegate.loadState,
             saveState: delegate.saveState,
-            loadScript: this.loadScript = name => loaders.get(name || defaultScript) || function(this: () => Script) {
+            loadScript: this.loadScript = (name => loaders.get(name || defaultScript) || function(this: () => Script, name: string) {
                 name = Dialogue.currentScript = name || defaultScript;
                 //update script every call
-                self.script = delegate.loadScript(name)(...context);
+                self.script = delegate.loadScript(name);
                 if(loaders.has(name)) return self.script;
                 //but only run checks once
                 loaders.set(name, this);
@@ -216,7 +250,7 @@ export class Dialogue<T> {
                 const jump = jumps.find(j => !labels.has(j[1].path) && loaders.has(j[1].script));
                 if(jump) new Error(`Could not find label (${jump[1].script}:${jump[0]}): ${jump[1].constructor.name.toLowerCase()} \`${jump[1]}\``);
                 return self.script;
-            }
+            })()
         });
     }
     async execute(directive: Directive) {
@@ -235,7 +269,7 @@ export class Dialogue<T> {
         const h = handler === 'restart' ? () => this.state.restart() : handler === 'undo' ? undo : handler;
         keys.forEach(k => this.handlers.set(`keyword '${k.toLowerCase()}'`, h));
     }    
-    async supply(lambdaContext: any, unexpectedInput?: UnexpectedInputError): Promise<string[]> {
+    async resume(lambdaContext: any, unexpectedInput?: UnexpectedInputError): Promise<string[]> {
         if(this.state.isComplete) throw [];
         const insertPauses = (output: BaseTemplate[]) => {
             //calculate pauses between messages
@@ -284,11 +318,11 @@ export class Dialogue<T> {
         try {
             await this.state.retrieveState();
             const consumeKeyword = (keyword: string) => {
-                this.loadScript('')();
+                this.loadScript('');
                 return consumePostback(`keyword '${keyword.toLowerCase()}'`);
             }
             const consumePostback = async (identifier: string) => {
-                this.handlers.has(identifier) || this.loadScript(identifier.includes('::') ? identifier.substr(0, identifier.indexOf('::')) : '')();
+                this.handlers.has(identifier) || this.loadScript(identifier.includes('::') ? identifier.substr(0, identifier.indexOf('::')) : '');
                 const handler = this.handlers.get(identifier);
                 if(!handler) return false;
                 const goto = await handler();
@@ -349,14 +383,14 @@ export class Dialogue<T> {
             this.outputFilter = o => error.repeatQuestion ? o instanceof Ask : false;
             unexpectedInput = error;
         }
-        return this.supply(apiRequest.lambdaContext, unexpectedInput);
+        return this.resume(apiRequest.lambdaContext, unexpectedInput);
     }
 }
 
 class State {
     private state: Array<{ type: 'label'|'expect'|'complete', path?: string, inline?: boolean }>
     private jumpCount = 0
-    constructor(private labels: Map<string, number>, private expects: Map<string, number>, private delegate: Delegate<void>) {}
+    constructor(private labels: Map<string, number>, private expects: Map<string, number>, private delegate: Delegate) {}
     async retrieveState() {
         if(!this.state) {
             const json = await this.delegate.loadState();
@@ -372,13 +406,13 @@ class State {
         const path = this.state[0] && this.state[0].path!;
         switch(this.state[0] && this.state[0].type) {
             case undefined:
-                this.delegate.loadScript('')();
+                this.delegate.loadScript('');
                 return 0;
             case 'expect': 
-                this.delegate.loadScript(path.substr(0, path.indexOf('::')))();
+                this.delegate.loadScript(path.substr(0, path.indexOf('::')));
                 return this.expects.get(path)! + 2 || 0;
             case 'label': 
-                this.delegate.loadScript(path.substr(0, path.indexOf('::')))();
+                this.delegate.loadScript(path.substr(0, path.indexOf('::')));
                 return this.labels.get(path)! + 1 || 0;
             case 'complete':
                 return -1;
@@ -388,7 +422,7 @@ class State {
     }
     jump(location: Directive, source: string, fromInlineGoto: boolean = false): number {
         assert(this.state);
-        this.delegate.loadScript(location.script)();
+        this.delegate.loadScript(location.script);
         if(++this.jumpCount > 10) throw new Error(`Endless loop detected (${source}): ${location.constructor.name.toLowerCase()} \`${location}\``);
         if(location instanceof Expect) {
             const line = this.expects.get(location.path);

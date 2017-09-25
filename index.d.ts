@@ -124,7 +124,7 @@ declare module "claudia-bot-builder" {
                 getLastBubble(): { title: string, subtitle?: string, image_url?: string }
                 addDefaultAction(url: string): this
                 addImage(url: string): this
-                addButton(title: string, value: string, type: string): this
+                addButton(title: string, value: string): this
                 addShareButton(shareContent?: string): this
             }
 
@@ -177,14 +177,13 @@ declare module "claudia-bot-builder" {
 declare module "dialogue-builder" {
     import { Request } from 'claudia-api-builder';
     import builder = require('claudia-bot-builder');
-    import FacebookTemplate = builder.fbTemplate.BaseTemplate;
     import Message = builder.Message;
+    import BaseTemplate = builder.fbTemplate.BaseTemplate;
     import Text = builder.fbTemplate.Text;
     import List = builder.fbTemplate.List;
-    import Generic = builder.fbTemplate.Generic;
     import Button = builder.fbTemplate.Button;
+    import Generic = builder.fbTemplate.Generic;
     import Attachment = builder.fbTemplate.Attachment;
-    export const defaultAction: symbol;
     export const location: symbol;
     export const onText: symbol;
     export const onLocation: symbol;
@@ -192,45 +191,48 @@ declare module "dialogue-builder" {
     export const onAudio: symbol;
     export const onVideo: symbol;
     export const onFile: symbol;
+    export const defaultAction: symbol;
     export const onUndo: symbol;
     export type ResponseHandler = any;
-// export interface ResponseHandler {
-//     readonly [quickReply: string]: () => Goto | Expect | void | Promise<Goto | Expect | void>
-//     readonly [location]?(lat: number, long: number, title?: string, url?: string): Goto | Expect | void | Promise<Goto | Expect | void>
-//     readonly [onText]?(text: string): Goto | Expect | void | Promise<Goto | Expect | void>
-//     readonly [onLocation]?(lat: number, long: number, title?: string, url?: string): Goto | Expect | void | Promise<Goto | Expect | void>
-//     readonly [onImage]?(url: string): Goto | Expect | void;
-// }
     export class UnexpectedInputError extends Error {
-        constructor(message?: string, repeatQuestion?: boolean, showQuickReplies?: boolean);
+        localizedMessage: string;
+        repeatQuestion: boolean;
+        showQuickReplies: boolean;
+        constructor(localizedMessage?: string, repeatQuestion?: boolean, showQuickReplies?: boolean);
+    }
+    export class Directive {
+        private text;
+        readonly script: string;
+        readonly name: string;
+        constructor(text: string);
+        readonly path: string;
+        toString(): string;
+        static assertEqual(a: Directive | undefined, b: Directive | undefined): void;
     }
     export type Label = String;
-    export class Directive {
-        private readonly text;
-        constructor(text: string);
-        toString(): string;
-    }
     export class Expect extends Directive {
     }
     export class Goto extends Directive {
     }
     export class Rollback extends Goto {
     }
-    export class Say extends Text {
-    }
-    export type Script = Array<FacebookTemplate | Label | Directive | ResponseHandler>;
-    export function say(template: TemplateStringsArray, ...substitutions: any[]): Say;
-    export function ask(template: TemplateStringsArray, ...substitutions: string[]): Text;
-    export function expect(template: TemplateStringsArray, ...substitutions: string[]): Expect;
-    export function goto(template: TemplateStringsArray, ...substitutions: string[]): Goto;
+    export type Script = Array<BaseTemplate | Label | Directive | ResponseHandler>;
+    export function say(template: TemplateStringsArray, ...substitutions: any[]): Text;
+    export function ask(template: TemplateStringsArray, ...substitutions: any[]): Text;
+    export function expect(template: TemplateStringsArray, ...substitutions: any[]): Expect;
+    export function goto(template: TemplateStringsArray, ...substitutions: any[]): Goto;
     export function rollback(template: TemplateStringsArray, ...substitutions: any[]): Rollback;
-    export function audio(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
-    export function video(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
-    export function image(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
-    export function file(template: TemplateStringsArray, ...substitutions: string[]): Attachment;
-    export  type ButtonHandler = {
-        [title: string]: () => Goto | void | Promise<Goto | void>;
+    export function audio(template: TemplateStringsArray, ...substitutions: any[]): Attachment;
+    export function video(template: TemplateStringsArray, ...substitutions: any[]): Attachment;
+    export function image(template: TemplateStringsArray, ...substitutions: any[]): Attachment;
+    export function file(template: TemplateStringsArray, ...substitutions: any[]): Attachment;
+    export type ButtonHandler = {
+        [title: string]: URLButton | (() => Goto | void | Promise<Goto | void>);
     };
+    export interface URLButton {
+        url: string;
+        height?: 'compact' | 'tall' | 'full';
+    }
     export interface Bubble {
         title: string;
         subtitle?: string;
@@ -238,36 +240,29 @@ declare module "dialogue-builder" {
         buttons?: ButtonHandler;
     }
     export function buttons(id: string, text: string, handler: ButtonHandler): Button;
-    export function list(id: string, type: 'compact' | 'large', bubbles: Bubble[], handler: ButtonHandler): List;
+    export function list(id: string, type: 'compact' | 'large', bubbles: Bubble[], handler?: ButtonHandler): List;
     export function generic(id: string, type: 'horizontal' | 'square', bubbles: Bubble[]): Generic;
-    export function dialogue<T>(name: string, script: (...context: T[]) => Script): DialogueBuilder<T>;
-    export interface DialogueBuilder<T> {
-        (...context: T[]): Script;
-        dialogueName: string;
+    export interface Delegate {
+        loadScript(name: string): Script;
+        loadState(): string | undefined | Promise<string | undefined>;
+        saveState(state: string): any | Promise<any>;
     }
-    export interface Storage {
-        store(state: string): any | Promise<any>
-        retrieve(): string | undefined | Promise<string | undefined>
-    }
-    export class Dialogue<T> {
-        private readonly script;
-        private readonly state;
-        private readonly keywords;
-        private outputType;
+    export class Dialogue {
         baseUrl: string;
-        constructor(builder: DialogueBuilder<T>, storage: Storage, ...context: T[]);
-        execute(directive: Directive): void;
+        constructor(defaultScript: string, delegate: Delegate);
+        execute(directive: Directive): Promise<void>;
         setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto | Promise<void | Goto>)): void;
-        private process(dialogue, processor);
-        private static handle<T>(handler, invoke, ...keys);
-        consume(message: Message, apiRequest: Request, onComplete?: () => void): Promise<any[]>;
+        resume(lambdaContext: any, unexpectedInput?: UnexpectedInputError): Promise<string[]>;
+        consume(message: Message, apiRequest: Request): Promise<any[]>;
     }
     export namespace mock {
-        const sender: { id: string };
+        const sender: {
+            id: string;
+        };
         const apiRequest: Request;
         function message(text: string): Message;
         function postback(payload?: string, text?: string): Message;
         function location(lat: number, long: number, title?: string, url?: string): Message;
-        function multimedia(type: 'image'|'audio'|'video'|'file'|'location', urls: string | string[], text?: string): Message;
+        function multimedia(type: 'image' | 'audio' | 'video' | 'file' | 'location', urls: string | string[], text?: string): Message;
     }
 }

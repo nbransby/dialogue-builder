@@ -3,28 +3,19 @@ import { Dialogue, Script, goto, rollback, say, ask, expect as expect_, onText, 
 import { fbTemplate } from 'claudia-bot-builder'
 
 
-const build = function<T>(
-        script: ((context: T) => Script) | { [name: string]: (context: T) => Script } , 
-        state: Array<{ type: 'label'|'expect'|'complete', path?: string, inline?: boolean }>, ...context: T[]
-    ): [Dialogue<T>, { loadScript: jest.Mock<{}>, loadState: jest.Mock<{}>, saveState: jest.Mock<{}>}] {
+const build = function(
+        script: (() => Script) | { [name: string]: () => Script }, 
+        state: Array<{ type: 'label'|'expect'|'complete', path?: string, inline?: boolean }> 
+    ): [Dialogue, { loadScript: jest.Mock<{}>, loadState: jest.Mock<{}>, saveState: jest.Mock<{}>}] {
     const delegate = { 
         saveState: jest.fn(), 
         loadState: jest.fn().mockReturnValueOnce(Promise.resolve(JSON.stringify(state))),
-        loadScript: script instanceof Function ? jest.fn().mockReturnValue(script) : 
-            jest.fn().mockImplementation(name => script[name])
+        loadScript: jest.fn().mockImplementation(name => script instanceof Function ? script() : script[name]())
     };
-    return [new Dialogue<T>(script instanceof Function ? 'mock' : Object.keys(script)[0], delegate, ...context), delegate];            
+    return [new Dialogue(script instanceof Function ? 'mock' : Object.keys(script)[0], delegate), delegate];            
 }
 
 describe("Dialogue", () => {
-
-    test("passes the supplied context to the script method", async () => {
-        const [dialogue] = build(context => {
-            expect(context).toBe('context');
-            return [ say `Hi!`];
-        }, [], 'context');
-        await dialogue.consume(mock.postback(), mock.apiRequest);
-    });
 
     test("sends the first and only message in a single message dialogue", async () => {
         const [dialogue, delegate] = build(() => [
@@ -196,13 +187,13 @@ describe("Dialogue", () => {
 
     test("reevaluates a script after executing a response handler", async () => {
         const context = { foo: 'bar' };
-        const [dialogue] = build((context: { foo: string }) => [
+        const [dialogue] = build(() => [
             ask `How are you?`, 
             expect_ `I feel`, {
                 [onText]: () => context.foo = 'baz'
             },
             say `${context.foo}`
-        ], [{ type: 'expect', path: `mock::I feel` }], context);
+        ], [{ type: 'expect', path: `mock::I feel` }]);
         expect(await dialogue.consume(mock.message('Amazing'), mock.apiRequest)).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: 'baz' }), 
         ]));
@@ -210,11 +201,11 @@ describe("Dialogue", () => {
 
     test("reevaluates a script after executing a keyword handler", async () => {
         const context = { foo: 'bar' };
-        const [dialogue] = build((context: { foo: string }) => [
+        const [dialogue] = build(() => [
             ask `How are you?`, 
             '!end',
             say `${context.foo}`
-        ], [{ type: 'expect', path: `mock::I feel` }], context);
+        ], [{ type: 'expect', path: `mock::I feel` }]);
         dialogue.setKeywordHandler('Amazing', () => {
             context.foo = 'baz'
             return goto `end`
@@ -227,7 +218,7 @@ describe("Dialogue", () => {
     test("reevaluates a script after executing a postback handler", async () => {
         const context = { foo: 'bar' };
         let button: fbTemplate.Button | undefined = undefined
-        const [dialogue] = build((context: { foo: string }) => [
+        const [dialogue] = build(() => [
             button = buttons('some buttons', 'Some buttons', {
                 'Amazing': () => {
                     context.foo = 'baz'
@@ -236,7 +227,7 @@ describe("Dialogue", () => {
             }),
             '!end',
             say `${context.foo}`
-        ], [], context);
+        ], []);
         await dialogue.consume(mock.postback(), mock.apiRequest);
         expect(await dialogue.consume(mock.postback(button!.postbacks![0][0]), mock.apiRequest)).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: 'baz' }), 
