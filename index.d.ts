@@ -252,7 +252,7 @@ declare module "dialogue-builder" {
         constructor(defaultScript: string, delegate: Delegate);
         execute(directive: Directive): Promise<void>;
         setKeywordHandler(keywords: string | string[], handler: 'restart' | 'undo' | (() => void | Goto | Promise<void | Goto>)): void;
-        resume(lambdaContext: any, unexpectedInput?: UnexpectedInputError): Promise<string[]>;
+        resume(lambdaContext: Request['lambdaContext'], unexpectedInput?: UnexpectedInputError): Promise<string[]>;
         consume(message: Message, apiRequest: Request): Promise<any[]>;
     }
     export namespace mock {

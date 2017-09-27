@@ -269,7 +269,7 @@ export class Dialogue {
         const h = handler === 'restart' ? () => this.state.restart() : handler === 'undo' ? undo : handler;
         keys.forEach(k => this.handlers.set(`keyword '${k.toLowerCase()}'`, h));
     }    
-    async resume(lambdaContext: any, unexpectedInput?: UnexpectedInputError): Promise<string[]> {
+    async resume(lambdaContext: Request['lambdaContext'], unexpectedInput?: UnexpectedInputError): Promise<string[]> {
         if(this.state.isComplete) throw [];
         const insertPauses = (output: BaseTemplate[]) => {
             //calculate pauses between messages
