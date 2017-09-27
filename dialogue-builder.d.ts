@@ -54,7 +54,7 @@ export declare type ButtonHandler = {
 };
 export interface URLButton {
     url: string;
-    webviewHeightRatio?: 'compact' | 'tall' | 'full';
+    height?: 'compact' | 'tall' | 'full';
 }
 export interface Bubble {
     title: string;
@@ -66,15 +66,15 @@ export declare function buttons(id: string, text: string, handler: ButtonHandler
 export declare function list(id: string, type: 'compact' | 'large', bubbles: Bubble[], handler?: ButtonHandler): List;
 export declare function generic(id: string, type: 'horizontal' | 'square', bubbles: Bubble[]): Generic;
 export interface Delegate {
-    loadScript(name: string): Script;
+    loadScript(name?: string): Script;
     loadState(): string | undefined | Promise<string | undefined>;
     saveState(state: string): any | Promise<any>;
 }
 export declare class Dialogue {
     static currentScript: string;
+    private readonly delegate;
     private readonly handlers;
     private readonly state;
-    private readonly loadScript;
     private script;
     private outputFilter;
     baseUrl: string;

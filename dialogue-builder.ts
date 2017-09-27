@@ -102,7 +102,7 @@ export function file(template: TemplateStringsArray, ...substitutions: any[]): A
 export type ButtonHandler = { [title: string]: URLButton | (() =>  Goto | void | Promise<Goto | void>) }
 export interface URLButton {
     url: string
-    webviewHeightRatio?: 'compact'|'tall'|'full'
+    height?: 'compact'|'tall'|'full'
 }
 export interface Bubble {
     title: string, 
@@ -195,15 +195,15 @@ export function generic(id: string, type: 'horizontal'|'square', bubbles: Bubble
     return generic;
 }
 export interface Delegate {
-    loadScript(name: string): Script
+    loadScript(name?: string): Script
     loadState(): string | undefined | Promise<string | undefined>
     saveState(state: string): any | Promise<any>
 }
 export class Dialogue {
     static currentScript: string
+    private readonly delegate: Delegate
     private readonly handlers: Map<string, () =>  void | Goto | Promise<Goto | void>> = new Map();
     private readonly state: State
-    private readonly loadScript: (name: string) => Script
     private script: Script
     private outputFilter: (o: BaseTemplate) => boolean
     public baseUrl: string
@@ -211,47 +211,47 @@ export class Dialogue {
         const labels = new Map();
         const expects = new Map();
         const jumps: [number, Goto][] = [];        
-        const loaders = new Map<string, () => Script>();
+        const loaded = new Set<string>();
         const self = this;
-        this.state = new State(labels, expects, {
-            loadState: delegate.loadState,
-            saveState: delegate.saveState,
-            loadScript: this.loadScript = (name => loaders.get(name || defaultScript) || function(this: () => Script, name: string) {
-                name = Dialogue.currentScript = name || defaultScript;
-                //update script every call
+        this.delegate = {
+            loadState: () => delegate.loadState(),
+            saveState: (state) => delegate.saveState(state),
+            loadScript: (name = defaultScript) => {
+                Dialogue.currentScript = name;    
                 self.script = delegate.loadScript(name);
-                if(loaders.has(name)) return self.script;
-                //but only run checks once
-                loaders.set(name, this);
-                labels.set(`${name}::`, -1);   
-                const templates = new Set();
-                for(let line = 0; line < self.script.length; line++) {
-                    let value = self.script[line];
-                    if(value instanceof Expect) {
-                        if(expects.has(value.path)) throw new Error(`Duplicate expect statement (${name}:${line}): expect \`${value}\``);
-                        expects.set(value.path, line);   
-                        const handler = self.script[++line];
-                        if(!handler || handler instanceof Directive|| handler instanceof BaseTemplate) throw new Error(`Expect statement must be followed by a response handler (${name}:${line}): expect \`${value}\``);
-                        if(handler.hasOwnProperty(location) && handler.hasOwnProperty(onLocation)) throw new Error(`Both location and onLocation implemented in the same response handler (${name}:${line}): expect \`${value}\``);
-                    } else if(typeof value === 'string') {
-                        const label = value.startsWith('!') ? value.substring(1) : value;
-                        if(labels.has(`${name}::${label}`)) throw new Error(`Duplicate label found (${name}:${line}): '${value}'`);
-                        labels.set(`${name}::${label}`, line);   
-                    } else if(value instanceof Goto) {
-                        jumps.push([line, value]);
-                    } else if(value instanceof BaseTemplate) {
-                        if(templates.has(`${name}::${value.identifier}`)) throw new Error(`Duplicate identifier found (${name}:${line}): ${value.identifier}`);
-                        if(value.identifier) templates.add(`${name}::${value.identifier}`);
-                        (value.postbacks || []).forEach(p => self.handlers.set(`${p[0]}`, p[1]));
-                    } else if(value !== null) {
-                        throw new Error(`Response handler must be preceded by an expect statement (${name}:${line})`)
+                if(!loaded.has(name)) {
+                    loaded.add(name);
+                    labels.set(`${name}::`, -1);   
+                    const templates = new Set();
+                    for(let line = 0; line < self.script.length; line++) {
+                        let value = self.script[line];
+                        if(value instanceof Expect) {
+                            if(expects.has(value.path)) throw new Error(`Duplicate expect statement (${name}:${line}): expect \`${value}\``);
+                            expects.set(value.path, line);   
+                            const handler = self.script[++line];
+                            if(!handler || handler instanceof Directive|| handler instanceof BaseTemplate) throw new Error(`Expect statement must be followed by a response handler (${name}:${line}): expect \`${value}\``);
+                            if(handler.hasOwnProperty(location) && handler.hasOwnProperty(onLocation)) throw new Error(`Both location and onLocation implemented in the same response handler (${name}:${line}): expect \`${value}\``);
+                        } else if(typeof value === 'string') {
+                            const label = value.startsWith('!') ? value.substring(1) : value;
+                            if(labels.has(`${name}::${label}`)) throw new Error(`Duplicate label found (${name}:${line}): '${value}'`);
+                            labels.set(`${name}::${label}`, line);   
+                        } else if(value instanceof Goto) {
+                            jumps.push([line, value]);
+                        } else if(value instanceof BaseTemplate) {
+                            if(templates.has(`${name}::${value.identifier}`)) throw new Error(`Duplicate identifier found (${name}:${line}): ${value.identifier}`);
+                            if(value.identifier) templates.add(`${name}::${value.identifier}`);
+                            (value.postbacks || []).forEach(p => self.handlers.set(`${p[0]}`, p[1]));
+                        } else if(value !== null) {
+                            throw new Error(`Response handler must be preceded by an expect statement (${name}:${line})`)
+                        }
                     }
-                }
-                const jump = jumps.find(j => !labels.has(j[1].path) && loaders.has(j[1].script));
-                if(jump) new Error(`Could not find label (${jump[1].script}:${jump[0]}): ${jump[1].constructor.name.toLowerCase()} \`${jump[1]}\``);
+                    const jump = jumps.find(j => !labels.has(j[1].path) && loaded.has(j[1].script));
+                    if(jump) new Error(`Could not find label (${jump[1].script}:${jump[0]}): ${jump[1].constructor.name.toLowerCase()} \`${jump[1]}\``);
+                } 
                 return self.script;
-            })()
-        });
+            }
+        }
+        this.state = new State(labels, expects, this.delegate);
     }
     async execute(directive: Directive) {
         await this.state.retrieveState();
@@ -318,11 +318,11 @@ export class Dialogue {
         try {
             await this.state.retrieveState();
             const consumeKeyword = (keyword: string) => {
-                this.loadScript('');
+                this.delegate.loadScript();
                 return consumePostback(`keyword '${keyword.toLowerCase()}'`);
             }
             const consumePostback = async (identifier: string) => {
-                this.handlers.has(identifier) || this.loadScript(identifier.includes('::') ? identifier.substr(0, identifier.indexOf('::')) : '');
+                this.handlers.has(identifier) || this.delegate.loadScript(identifier.includes('::') ? identifier.substr(0, identifier.indexOf('::')) : undefined);
                 const handler = this.handlers.get(identifier);
                 if(!handler) return false;
                 const goto = await handler();
@@ -406,7 +406,7 @@ class State {
         const path = this.state[0] && this.state[0].path!;
         switch(this.state[0] && this.state[0].type) {
             case undefined:
-                this.delegate.loadScript('');
+                this.delegate.loadScript();
                 return 0;
             case 'expect': 
                 this.delegate.loadScript(path.substr(0, path.indexOf('::')));
