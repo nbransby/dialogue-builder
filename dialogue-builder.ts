@@ -269,7 +269,11 @@ export class Dialogue {
         const h = handler === 'restart' ? () => this.state.restart() : handler === 'undo' ? undo : handler;
         keys.forEach(k => this.handlers.set(`keyword '${k.toLowerCase()}'`, h));
     }    
-    async resume(lambdaContext: Request['lambdaContext'], unexpectedInput?: UnexpectedInputError): Promise<string[]> {
+    async resume(lambdaContext: Request['lambdaContext']): Promise<string[]> {
+        return this.send(lambdaContext, 'REGULAR')
+    }
+    private async send(lambdaContext: Request['lambdaContext'], notificationType: 'REGULAR'|'NO_PUSH', unexpectedInput?: UnexpectedInputError): Promise<string[]> {
+            await this.state.retrieveState();
         if(this.state.isComplete) throw [];
         const insertPauses = (output: BaseTemplate[]) => {
             //calculate pauses between messages
@@ -278,7 +282,7 @@ export class Dialogue {
             //get output and insert pauses
             const messages: Array<{ get(): string}> = [];
             output.forEach(message => messages.push(
-                message.setBaseUrl(this.baseUrl).setNotificationType('NO_PUSH'), 
+                message.setBaseUrl(this.baseUrl).setNotificationType(notificationType), 
                 new ChatAction('typing_on'),
                 new Pause(message.getReadingDuration() * factor)
             ));
@@ -383,7 +387,7 @@ export class Dialogue {
             this.outputFilter = o => error.repeatQuestion ? o instanceof Ask : false;
             unexpectedInput = error;
         }
-        return this.resume(apiRequest.lambdaContext, unexpectedInput);
+        return this.send(apiRequest.lambdaContext, 'NO_PUSH', unexpectedInput);
     }
 }
 
