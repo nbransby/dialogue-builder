@@ -616,17 +616,18 @@ describe("Dialogue", () => {
     });
 
     test("respects rollback to start of script", async () => {
-        const button = buttons('some buttons', 'Some buttons', { 'Run': () => goto `subroutine` });
+        let button: fbTemplate.Button | undefined;
         const [dialogue, delegate] = build(() => [
             say `Hi!`,
             '!subroutine',
             say `Running subroutine`,
             rollback `subroutine`,
             say `Don't say this`,
-            button,
+            button = buttons('some buttons', 'Some buttons', { 'Run': () => goto `subroutine` }),
         ], []);
-        const result = await dialogue.consume(mock.postback(button.postbacks![0][0]), mock.apiRequest);
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}]));
+        await dialogue.consume(mock.postback(), mock.apiRequest);
+        const result = await dialogue.consume(mock.postback(button!.postbacks![0][0]), mock.apiRequest);
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'label', path: 'mock::', inline: true }, { type: 'label', path: 'mock::subroutine', inline: false }]));
         expect(result).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: 'Running subroutine' }), 
             expect.objectContaining({ text: 'Hi!' }), 
@@ -637,18 +638,19 @@ describe("Dialogue", () => {
     });
 
     test("respects rollback to previous label", async () => {
-        const button = buttons('some buttons', 'Some buttons', { 'Run': () => goto `subroutine` });
+        let button: fbTemplate.Button | undefined;
         const [dialogue, delegate] = build(() => [
             say `Don't say this`,
             '!subroutine',
             say `Running subroutine`,
             rollback `subroutine`,
-            button,
+            button = buttons('some buttons', 'Some buttons', { 'Run': () => goto `subroutine` }),
             'previous_label',
             say `Hi!`,
         ], [{ type: 'label', path: 'mock::previous_label'}]);
-        const result = await dialogue.consume(mock.postback(button.postbacks![0][0]), mock.apiRequest);
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'label', path: 'mock::previous_label'}]));
+        await dialogue.consume(mock.postback(), mock.apiRequest);
+        const result = await dialogue.consume(mock.postback(button!.postbacks![0][0]), mock.apiRequest);
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: "label", path: "mock::previous_label" }, { type: "label", path: 'mock::subroutine', inline: false}, { type: 'label', path: 'mock::previous_label'}]));
         expect(result).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: 'Running subroutine' }), 
             expect.objectContaining({ text: 'Hi!' }), 
@@ -659,21 +661,22 @@ describe("Dialogue", () => {
     });
 
     test("respects rollback to previous expect", async () => {
-        const button = buttons('some buttons', 'Some buttons', { 'Run': () => goto `subroutine` });
+        let button: fbTemplate.Button | undefined;
         const [dialogue, delegate] = build(() => [
             say `Don't say this`,
             '!subroutine',
             say `Running subroutine`,
             rollback `subroutine`,
-            button,
+            button = buttons('some buttons', 'Some buttons', { 'Run': () => goto `subroutine` }),
             say `How do you feel?`,
             expect_ `I feel`, {
                 'Amazing': () => goto `label`
             },
             say `Goodbye!`,
         ], [{ type: 'expect', path: 'mock::I feel'}]);
-        const result = await dialogue.consume(mock.postback(button.postbacks![0][0]), mock.apiRequest);
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'expect', path: 'mock::I feel'}]));
+        await dialogue.consume(mock.postback(), mock.apiRequest);
+        const result = await dialogue.consume(mock.postback(button!.postbacks![0][0]), mock.apiRequest);
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: "expect", path: "mock::I feel" },{ type: "label", path: "mock::subroutine", inline: false }, { type: 'expect', path: 'mock::I feel'}]));
         expect(result).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: 'Running subroutine' }), 
             expect.objectContaining({ text: 'Goodbye!' }), 
@@ -682,7 +685,7 @@ describe("Dialogue", () => {
             expect.objectContaining({ text: `Don't say this` })
         ]));
     });
-
+    
     test("respects gotos executed on the dialogue instance", async () => {
         const [dialogue] = build(() => [
             say `Don't say this`,
@@ -702,7 +705,7 @@ describe("Dialogue", () => {
     test("jumps to an expect executed on the dialogue instance", async () => {
         const handler = jest.fn();
         const [dialogue] = build(() => [
-            say `Don't say this`,
+            say `Don't sa   y this`,
             expect_ `I feel`, {
                 'Amazing': handler
             },
@@ -839,7 +842,7 @@ describe("Dialogue", () => {
         const result = await dialogue.consume(mock.message('Amazing'), mock.apiRequest);
         expect(handler).toHaveBeenCalledWith('Amazing');    
         expect(result).toEqual(expect.arrayContaining([
-            expect.objectContaining({ text: 'Goodbye' }), 
+            expect.objectContaining({ text: 'But why?' }), 
         ]));
     });
 

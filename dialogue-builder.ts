@@ -273,7 +273,7 @@ export class Dialogue {
         return this.send(lambdaContext, 'REGULAR')
     }
     private async send(lambdaContext: Request['lambdaContext'], notificationType: 'REGULAR'|'NO_PUSH', unexpectedInput?: UnexpectedInputError): Promise<string[]> {
-            await this.state.retrieveState();
+        await this.state.retrieveState();
         if(this.state.isComplete) throw [];
         const insertPauses = (output: BaseTemplate[]) => {
             //calculate pauses between messages
@@ -375,7 +375,7 @@ export class Dialogue {
                     const result = await (results.length ? Promise.all(results).then(r => r.reduce((p, c) => Directive.assertEqual(p, c) || p || c)) : 
                         handle(handler, m => m.call(handler, message.text), message.text, onText, defaultAction));
                     if(!(result instanceof Directive)) return;
-                    line = this.state.jump(result, `${Dialogue.currentScript}::expect \`${this.script[line - 2].toString()}\``);
+                    line = this.state.jump(result, `${Dialogue.currentScript}::expect \`${this.script[line - 2].toString()}\``, false, false);
                     result instanceof Expect && await processResponse(line);
                 }
                 const line = this.state.startLine;
@@ -424,20 +424,20 @@ class State {
                 throw new Error(`Unexpected type ${this.state[0].type}`);
         }
     }
-    jump(location: Directive, source: string, fromInlineGoto: boolean = false): number {
+    jump(location: Directive, source: string, fromInlineGoto: boolean = false, persistExpect = true): number {
         assert(this.state);
         this.delegate.loadScript(location.script);
         if(++this.jumpCount > 10) throw new Error(`Endless loop detected (${source}): ${location.constructor.name.toLowerCase()} \`${location}\``);
         if(location instanceof Expect) {
             const line = this.expects.get(location.path);
             if(line === undefined) throw new Error(`Could not find expect (${source}): expect \`${location}\``);        
-            this.state.unshift({ type: 'expect', path: location.path });    
+            if(persistExpect) this.state.unshift({ type: 'expect', path: location.path });    
             return line + 2 || 0;
         }
         if(!this.labels.has(location.path)) throw new Error(`Could not find label (${source}): ${location instanceof Rollback ? 'rollback' : 'goto'} \`${location}\``);        
         console.log(`${location instanceof Rollback ? 'Rolling back past' : 'Jumping to'} label '${location.path}' (${source}): ${location.constructor.name.toLowerCase()} \`${location}\``);
         if(location instanceof Rollback) {
-            this.state.splice(0, this.state.findIndex(s => s.type === 'label' && s.path === location.path) + 1);                
+            this.state.unshift(this.state[this.state.findIndex(s => s.type === 'label' && s.path === location.path) + 1] || { type: 'label', path: `${location.script}::`, inline: fromInlineGoto});
             return this.startLine;
         }        
         if(this.isComplete) this.state.shift(); 
