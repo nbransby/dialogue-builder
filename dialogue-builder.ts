@@ -274,10 +274,9 @@ export class Dialogue {
     }
     private async send(lambdaContext: Request['lambdaContext'], notificationType: 'REGULAR'|'NO_PUSH', unexpectedInput?: UnexpectedInputError): Promise<string[]> {
         await this.state.retrieveState();
-        if(this.state.isComplete) throw [];
         const insertPauses = (output: BaseTemplate[]) => {
             //calculate pauses between messages
-            const remaining = Math.min(10 * 1000, lambdaContext.getRemainingTimeInMillis() - 2);
+            const remaining = Math.min(10 * 1000, lambdaContext.getRemainingTimeInMillis() - 5);
             const factor = Math.min(1, remaining / output.reduce((total, o) => total + o.getReadingDuration(), 0));
             //get output and insert pauses
             const messages: Array<{ get(): string}> = [];
@@ -378,8 +377,7 @@ export class Dialogue {
                     line = this.state.jump(result, `${Dialogue.currentScript}::expect \`${this.script[line - 2].toString()}\``, false, false);
                     result instanceof Expect && await processResponse(line);
                 }
-                const line = this.state.startLine;
-                if(line > 0) await processResponse(line);
+                if(this.state.currentState == 'expect') await processResponse(this.state.startLine);
             }        
         } catch(error) {
             if(!(error instanceof UnexpectedInputError)) throw error;
@@ -387,7 +385,7 @@ export class Dialogue {
             this.outputFilter = o => error.repeatQuestion ? o instanceof Ask : false;
             unexpectedInput = error;
         }
-        return this.send(apiRequest.lambdaContext, 'NO_PUSH', unexpectedInput);
+        return this.state.currentState == 'complete' ? [] : this.send(apiRequest.lambdaContext, 'NO_PUSH', unexpectedInput);
     }
 }
 
@@ -401,14 +399,14 @@ class State {
             this.state = typeof json === 'string' ? JSON.parse(json) : [];
         }
     }
-    get isComplete(): boolean {
+    get currentState(): 'expect' | 'complete' | 'label' | undefined {
         assert(this.state);
-        return this.state[0] && this.state[0].type === 'complete';
+        return this.state[0] && this.state[0].type;
     }
     get startLine(): number {
         assert(this.state);
         const path = this.state[0] && this.state[0].path!;
-        switch(this.state[0] && this.state[0].type) {
+        switch(this.currentState) {
             case undefined:
                 this.delegate.loadScript();
                 return 0;
@@ -418,16 +416,15 @@ class State {
             case 'label': 
                 this.delegate.loadScript(path.substr(0, path.indexOf('::')));
                 return this.labels.get(path)! + 1 || 0;
-            case 'complete':
-                return -1;
             default: 
-                throw new Error(`Unexpected type ${this.state[0].type}`);
+                throw new Error(`Unexpected state ${this.state[0].type}`);
         }
     }
     jump(location: Directive, source: string, fromInlineGoto: boolean = false, persistExpect = true): number {
         assert(this.state);
         this.delegate.loadScript(location.script);
         if(++this.jumpCount > 10) throw new Error(`Endless loop detected (${source}): ${location.constructor.name.toLowerCase()} \`${location}\``);
+        if(this.currentState == 'complete') this.state.shift(); 
         if(location instanceof Expect) {
             const line = this.expects.get(location.path);
             if(line === undefined) throw new Error(`Could not find expect (${source}): expect \`${location}\``);        
@@ -440,8 +437,7 @@ class State {
             this.state.unshift(this.state[this.state.findIndex(s => s.type === 'label' && s.path === location.path) + 1] || { type: 'label', path: `${location.script}::`, inline: fromInlineGoto});
             return this.startLine;
         }        
-        if(this.isComplete) this.state.shift(); 
-        this.state.unshift({ type: 'label', path: location.path, inline: fromInlineGoto});
+        this.state.unshift({ type: 'label', path: location.path, inline: fromInlineGoto });
         return this.startLine;
     }
     async complete(expect?: Expect) {

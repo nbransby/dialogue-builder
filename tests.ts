@@ -36,13 +36,25 @@ describe("Dialogue", () => {
         );
     });
         
-    test("throws empty array on consume when complete", async () => {
+    test("returns empty array on consume when complete", async () => {
         const [dialogue, delegate] = build(() => [
             say `Hi!`
         ], []);
         await dialogue.consume(mock.postback(), mock.apiRequest)
         expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
-        await expect(dialogue.consume(mock.message('Hi'), mock.apiRequest)).rejects.toEqual([]);
+        await expect(dialogue.consume(mock.message('Hi'), mock.apiRequest)).resolves.toEqual([]);
+        expect(delegate.saveState).toHaveBeenCalledTimes(1);
+    });
+        
+    test("returns empty array on consume when previously hit a breaking label", async () => {
+        const [dialogue, delegate] = build(() => [
+            say `Hi!`,
+            '!breaking_label',
+            say `Bye!`
+        ], []);
+        await dialogue.consume(mock.postback(), mock.apiRequest)
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
+        await expect(dialogue.consume(mock.message('Hi'), mock.apiRequest)).resolves.toEqual([]);
         expect(delegate.saveState).toHaveBeenCalledTimes(1);
     });
         
