@@ -119,9 +119,9 @@ export function buttons(id: string, text: string, handler: ButtonHandler): Butto
         const button = handler[key];
         if(typeof button === "function") {
             const payload = `'${Dialogue.currentScript}::${key}' button in buttons '${id}'`;
-            buttons.addButton(key, payload).postbacks!.push([payload, button]);
+            buttons.addButton(key || ' ', payload).postbacks!.push([payload, button]);
         } else {
-            buttons.addButton(key, button.url)
+            buttons.addButton(key || ' ', button.url)
         }
     });
     return buttons;
@@ -132,7 +132,7 @@ export function list(id: string, type: 'compact'|'large', bubbles: Bubble[], han
     list.identifier = `list '${id}'`;
     list.postbacks = [];
     bubbles.forEach((bubble, index) => {
-        list.addBubble(bubble.title, bubble.subtitle);
+        list.addBubble(bubble.title || ' ', bubble.subtitle);
         if(bubble.image) list.addImage(bubble.image);
         if(bubble.buttons &&  bubble.buttons[defaultAction]) {
             const button = bubble.buttons[defaultAction];
@@ -140,16 +140,16 @@ export function list(id: string, type: 'compact'|'large', bubbles: Bubble[], han
                 const payload = `default action of ${ordinals[index]} bubble of list '${id}'`;
                 list.addDefaultAction(payload).postbacks!.push([payload, button]);
             } else {
-                list.addDefaultAction(button.url)
+                list.addDefaultAction(button.url || 'null.url')
             }
         }
         bubble.buttons && Object.keys(bubble.buttons).forEach(key => {
             const button = bubble.buttons![key];
             if(typeof button === "function") {
                 const payload = `'${key}' button in ${ordinals[index]} bubble of list '${id}'`;
-                list.addButton(key, payload).postbacks!.push([payload, button])
+                list.addButton(key || ' ', payload).postbacks!.push([payload, button])
             } else {
-                list.addButton(key, button.url)
+                list.addButton(key || ' ', button.url || 'null.url')
             }
         });
     });
@@ -157,9 +157,9 @@ export function list(id: string, type: 'compact'|'large', bubbles: Bubble[], han
         const button = handler[key];
         if(typeof button === "function") {
             const payload = `'${key}' button in list '${id}'`;
-            list.addListButton(key, payload).postbacks!.push([payload, button]);
+            list.addListButton(key || ' ', payload).postbacks!.push([payload, button]);
         } else {
-            list.addButton(key, button.url)
+            list.addButton(key || ' ', button.url || 'null.url')
         }
     });
     return list;
@@ -171,7 +171,7 @@ export function generic(id: string, type: 'horizontal'|'square', bubbles: Bubble
     generic.postbacks = [];
     if(type == 'square') generic.useSquareImages();
     bubbles.forEach((bubble, index) => {
-        generic.addBubble(bubble.title, bubble.subtitle);
+        generic.addBubble(bubble.title || ' ', bubble.subtitle);
         if(bubble.image) generic.addImage(bubble.image);
         if(bubble.buttons && bubble.buttons[defaultAction]) {
             const button = bubble.buttons[defaultAction];
@@ -179,23 +179,23 @@ export function generic(id: string, type: 'horizontal'|'square', bubbles: Bubble
                 const payload = `default action of ${ordinals[index]} bubble of generic '${id}'`;
                 generic.addDefaultAction(payload).postbacks!.push([payload, button]);
             } else {
-                generic.addDefaultAction(button.url)
+                generic.addDefaultAction(button.url || 'null.url')
             }
         }
         bubble.buttons && Object.keys(bubble.buttons).forEach(key => {
             const button = bubble.buttons![key];
             if(typeof button === "function") {
                 const payload = `'${key}' button in ${ordinals[index]} bubble of generic '${id}'`;
-                generic.addButton(key, payload).postbacks!.push([payload, button])
+                generic.addButton(key || ' ', payload).postbacks!.push([payload, button])
             } else {
-                generic.addButton(key, button.url)
+                generic.addButton(key || ' ', button.url || 'null.url')
             }
         });
     });
     return generic;
 }
 export interface Delegate {
-    loadScript(name?: string): Script
+    loadScript(name: string): Script
     loadState(): string | undefined | Promise<string | undefined>
     saveState(state: string): any | Promise<any>
 }
@@ -207,7 +207,7 @@ export class Dialogue {
     private script: Script
     private outputFilter: (o: BaseTemplate) => boolean
     public baseUrl: string
-    constructor(defaultScript: string, delegate: Delegate) {
+    constructor(private readonly defaultScript: string, delegate: Delegate) {
         const labels = new Map();
         const expects = new Map();
         const jumps: [number, Goto][] = [];        
@@ -215,8 +215,8 @@ export class Dialogue {
         const self = this;
         this.delegate = {
             loadState: () => delegate.loadState(),
-            saveState: (state) => delegate.saveState(state),
-            loadScript: (name = defaultScript) => {
+            saveState: state => delegate.saveState(state),
+            loadScript: name => {
                 Dialogue.currentScript = name;    
                 self.script = delegate.loadScript(name);
                 if(!loaded.has(name)) {
@@ -251,7 +251,7 @@ export class Dialogue {
                 return self.script;
             }
         }
-        this.state = new State(labels, expects, this.delegate);
+        this.state = new State(defaultScript, labels, expects, this.delegate);
     }
     async execute(directive: Directive) {
         await this.state.retrieveState();
@@ -262,7 +262,8 @@ export class Dialogue {
         const undo = () => { 
             this.outputFilter = o => o instanceof Ask; 
             this.state.undo();
-            const handler = this.script[this.state.startLine - 1];
+            const line = this.state.startLine - 1;
+            const handler = this.script[line];
             handler && handler[onUndo] && handler[onUndo]();
             this.state.repeat();
         }
@@ -320,18 +321,15 @@ export class Dialogue {
         let unexpectedInput = undefined; 
         try {
             await this.state.retrieveState();
-            const consumeKeyword = (keyword: string) => {
-                this.delegate.loadScript();
-                return consumePostback(`keyword '${keyword.toLowerCase()}'`);
-            }
             const consumePostback = async (identifier: string) => {
-                this.handlers.has(identifier) || this.delegate.loadScript(identifier.includes('::') ? identifier.substr(0, identifier.indexOf('::')) : undefined);
+                this.handlers.has(identifier) || this.delegate.loadScript(identifier.includes('::') ? identifier.substr(0, identifier.indexOf('::')) : this.defaultScript);
                 const handler = this.handlers.get(identifier);
                 if(!handler) return false;
                 const goto = await handler();
                 goto instanceof Goto && this.state.jump(goto, identifier);
                 return true;                            
             }
+            const consumeKeyword = (keyword: string) => consumePostback(`keyword '${keyword.toLowerCase()}'`);
             //process input
             if(message.originalRequest.postback) {
                 const payload = message.originalRequest.postback.payload;
@@ -392,24 +390,22 @@ export class Dialogue {
 class State {
     private state: Array<{ type: 'label'|'expect'|'complete', path?: string, inline?: boolean }>
     private jumpCount = 0
-    constructor(private labels: Map<string, number>, private expects: Map<string, number>, private delegate: Delegate) {}
+    constructor(private readonly defaultScript: string, private labels: Map<string, number>, private expects: Map<string, number>, private delegate: Delegate) {}
     async retrieveState() {
         if(!this.state) {
             const json = await this.delegate.loadState();
             this.state = typeof json === 'string' ? JSON.parse(json) : [];
+            this.state.length == 0 && this.restart();
         }
     }
-    get currentState(): 'expect' | 'complete' | 'label' | undefined {
+    get currentState(): 'expect' | 'complete' | 'label' {
         assert(this.state);
-        return this.state[0] && this.state[0].type;
+        return this.state[0].type;
     }
     get startLine(): number {
         assert(this.state);
-        const path = this.state[0] && this.state[0].path!;
+        const path = this.state[0].path!;
         switch(this.currentState) {
-            case undefined:
-                this.delegate.loadScript();
-                return 0;
             case 'expect': 
                 this.delegate.loadScript(path.substr(0, path.indexOf('::')));
                 return this.expects.get(path)! + 2 || 0;
@@ -434,7 +430,7 @@ class State {
         if(!this.labels.has(location.path)) throw new Error(`Could not find label (${source}): ${location instanceof Rollback ? 'rollback' : 'goto'} \`${location}\``);        
         console.log(`${location instanceof Rollback ? 'Rolling back past' : 'Jumping to'} label '${location.path}' (${source}): ${location.constructor.name.toLowerCase()} \`${location}\``);
         if(location instanceof Rollback) {
-            this.state.unshift(this.state[this.state.findIndex(s => s.type === 'label' && s.path === location.path) + 1] || { type: 'label', path: `${location.script}::`, inline: fromInlineGoto});
+            this.state.unshift(this.state[this.state.findIndex(s => s.type === 'label' && s.path === location.path) + 1]);
             return this.startLine;
         }        
         this.state.unshift({ type: 'label', path: location.path, inline: fromInlineGoto });
@@ -447,15 +443,15 @@ class State {
     }    
     restart() {
         assert(this.state);
-        this.state.length = 0;
+        this.state = [{ type: 'label', path: this.defaultScript + '::', inline: false }];
     }
     repeat() {
         assert(this.state);
-        this.state.splice(0, this.state.findIndex((_, i, s) => i+1 === this.state.length || s[i+1].type === 'expect' || !s[i+1].inline) + 1);                
+        this.state.splice(0, Math.min(this.state.length - 1, this.state.findIndex((_, i, s) => i+1 === this.state.length || s[i+1].type === 'expect' || !s[i+1].inline) + 1));                
     }
     undo() {
         assert(this.state);
-        this.state.splice(0, this.state.findIndex((_, i, s) => i+1 === this.state.length || s[i+1].type === 'expect') + 1);                
+        this.state.splice(0, Math.min(this.state.length - 1, this.state.findIndex((_, i, s) => i+1 === this.state.length || s[i+1].type === 'expect') + 1));                
     }
 }
 

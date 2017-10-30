@@ -24,7 +24,7 @@ describe("Dialogue", () => {
         expect(await dialogue.consume(mock.postback(), mock.apiRequest)).toEqual(
             expect.arrayContaining([expect.objectContaining({ text: 'Hi!' })])
         );
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }, { type: "label", path:"mock::", inline: false}]));
     });
         
     test("sends all messages with NO_PUSH notification type", async () => {
@@ -41,7 +41,7 @@ describe("Dialogue", () => {
             say `Hi!`
         ], []);
         await dialogue.consume(mock.postback(), mock.apiRequest)
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }, { type: "label", path:"mock::", inline: false}]));
         await expect(dialogue.consume(mock.message('Hi'), mock.apiRequest)).resolves.toEqual([]);
         expect(delegate.saveState).toHaveBeenCalledTimes(1);
     });
@@ -53,7 +53,7 @@ describe("Dialogue", () => {
             say `Bye!`
         ], []);
         await dialogue.consume(mock.postback(), mock.apiRequest)
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }, { type: "label", path:"mock::", inline: false}]));
         await expect(dialogue.consume(mock.message('Hi'), mock.apiRequest)).resolves.toEqual([]);
         expect(delegate.saveState).toHaveBeenCalledTimes(1);
     });
@@ -69,7 +69,7 @@ describe("Dialogue", () => {
             { claudiaPause: expect.anything() },
             expect.objectContaining({ text: `How are you?` }),
         ]);
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }, { type: "label", path:"mock::", inline: false}]));
     });
 
         
@@ -83,7 +83,7 @@ describe("Dialogue", () => {
         ], []);
         const result = await dialogue.consume(mock.postback(), mock.apiRequest);
         expect(result.filter(m => m.claudiaPause).reduce((t, m) => t + m.claudiaPause, 0)).toBeLessThan(10 * 1000);
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete' }, { type: "label", path:"mock::", inline: false}]));
     });
 
 
@@ -183,7 +183,7 @@ describe("Dialogue", () => {
         expect(result).not.toEqual(expect.arrayContaining([
             expect.objectContaining({ text: `Don't say this` })
         ]));
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: 'mock::I feel'}]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: 'mock::I feel'}, { type: "label", path:"mock::", inline: false}]));
     });
 
     test("resumes where it paused on receiving a response", async () => {
@@ -192,9 +192,9 @@ describe("Dialogue", () => {
             expect_ `I feel`, {
                 [onText](): void {}
             },
-        ], [{ type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         expect(await dialogue.consume(mock.message('Amazing'), mock.apiRequest)).toEqual([]);
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'expect', path: 'mock::I feel'}]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'expect', path: 'mock::I feel'}, { type: "label", path:"mock::", inline: false}]));
     });
 
     test("reevaluates a script after executing a response handler", async () => {
@@ -205,7 +205,7 @@ describe("Dialogue", () => {
                 [onText]: () => context.foo = 'baz'
             },
             say `${context.foo}`
-        ], [{ type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         expect(await dialogue.consume(mock.message('Amazing'), mock.apiRequest)).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: 'baz' }), 
         ]));
@@ -217,7 +217,7 @@ describe("Dialogue", () => {
             ask `How are you?`, 
             '!end',
             say `${context.foo}`
-        ], [{ type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         dialogue.setKeywordHandler('Amazing', () => {
             context.foo = 'baz'
             return goto `end`
@@ -287,7 +287,7 @@ describe("Dialogue", () => {
             '!blocking_label',
             say `Promised was resolved`
 
-        ], [{ type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         expect(await dialogue.consume(mock.message('Blah'), mock.apiRequest)).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: 'Promised was resolved' })
         ]));        
@@ -300,7 +300,7 @@ describe("Dialogue", () => {
             expect_ `I feel`, {
                 'Amazing': handler
             }
-        ], [{ type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         await dialogue.consume(mock.message('Amazing'), mock.apiRequest)
         expect(handler).toHaveBeenCalled();
     });
@@ -343,7 +343,7 @@ describe("Dialogue", () => {
             ask `How are you?`, 
             expect_ `I feel`, {},
             say `I don't care much`, 
-        ], [{ type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         const result = await dialogue.consume(mock.message('Great'), mock.apiRequest);
         expect(result).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: `I don't care much` })
@@ -368,7 +368,7 @@ describe("Dialogue", () => {
             expect_ `I want to go to`, {
                 [onLocation]: null
             },
-        ], [{ type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         await dialogue.consume(mock.message('Amazing'), mock.apiRequest) //I feel
         await dialogue.consume(mock.message('My tests are passing'), mock.apiRequest) //I feel that way because
         await dialogue.consume(mock.location(50, 1, 'Work'), mock.apiRequest) //I am at        
@@ -382,7 +382,7 @@ describe("Dialogue", () => {
                     [location]: null,
                     [onLocation]: null
                 },
-            ], [{ type: 'expect', path: `mock::I am here` }]);
+            ], [{ type: 'expect', path: `mock::I am here` }, { type: "label", path:"mock::", inline: false}]);
         await expect(dialogue.consume(mock.postback(), mock.apiRequest)).rejects.toEqual(new Error('Both location and onLocation implemented in the same response handler (mock:2): expect `I am here`'));
         expect(delegate.saveState).not.toHaveBeenCalled();
     });
@@ -394,7 +394,7 @@ describe("Dialogue", () => {
                 'Amazing': null,
                 [onText]: () => fail('Should not be called')
             },
-        ], [{ type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         await dialogue.consume(mock.message('Amazing'), mock.apiRequest)
     });
     
@@ -405,7 +405,7 @@ describe("Dialogue", () => {
             expect_ `I am here`, {
                 [location]: handler
             },
-        ], [{ type: 'expect', path: `mock::I am here` }]);
+        ], [{ type: 'expect', path: `mock::I am here` }, { type: "label", path:"mock::", inline: false}]);
         await dialogue.consume(mock.location(50, 1, 'Mock', "localhost"), mock.apiRequest)
         expect(handler).toHaveBeenCalledWith(50, 1, 'Mock', "localhost");
     });
@@ -417,7 +417,7 @@ describe("Dialogue", () => {
             expect_ `I feel`, {
                 [onText]: handler
             },
-        ], [{ type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         await dialogue.consume(mock.message('Amazing'), mock.apiRequest)
         expect(handler).toHaveBeenCalledWith('Amazing');
     });
@@ -429,7 +429,7 @@ describe("Dialogue", () => {
             expect_ `I am here`, {
                 [onLocation]: handler
             },
-        ], [{ type: 'expect', path: `mock::I am here` }]);
+        ], [{ type: 'expect', path: `mock::I am here` }, { type: "label", path:"mock::", inline: false}]);
         await dialogue.consume(mock.location(50, 1, 'Mock', "localhost"), mock.apiRequest)
         expect(handler).toHaveBeenCalledWith(50, 1, 'Mock', "localhost");
     });
@@ -441,7 +441,7 @@ describe("Dialogue", () => {
             expect_ `I look like`, {
                 [onImage]: handler
             },
-        ], [{ type: 'expect', path: `mock::I look like` }]);
+        ], [{ type: 'expect', path: `mock::I look like` }, { type: "label", path:"mock::", inline: false}]);
         await dialogue.consume(mock.multimedia("image", "photo.jpg"), mock.apiRequest);
         expect(handler).toHaveBeenCalledWith("photo.jpg");
     });
@@ -453,7 +453,7 @@ describe("Dialogue", () => {
             expect_ `I move like`, {
                 [onVideo]: handler
             },
-        ], [{ type: 'expect', path: `mock::I move like` }]);
+        ], [{ type: 'expect', path: `mock::I move like` }, { type: "label", path:"mock::", inline: false}]);
         await dialogue.consume(mock.multimedia("video", "video.mpg"), mock.apiRequest);
         expect(handler).toHaveBeenCalledWith("video.mpg");
     });
@@ -465,7 +465,7 @@ describe("Dialogue", () => {
             expect_ `I sound like`, {
                 [onAudio]: handler
             },
-        ], [{ type: 'expect', path: `mock::I sound like` }]);
+        ], [{ type: 'expect', path: `mock::I sound like` }, { type: "label", path:"mock::", inline: false}]);
         await dialogue.consume(mock.multimedia("audio", "recording.wav"), mock.apiRequest);
         expect(handler).toHaveBeenCalledWith("recording.wav");
     });
@@ -477,7 +477,7 @@ describe("Dialogue", () => {
             expect_ `I write like`, {
                 [onFile]: handler
             },
-        ], [{ type: 'expect', path: `mock::I write like` }]);
+        ], [{ type: 'expect', path: `mock::I write like` }, { type: "label", path:"mock::", inline: false}]);
         await dialogue.consume(mock.multimedia("file", "word.doc"), mock.apiRequest);
         expect(handler).toHaveBeenCalledWith("word.doc");
     });
@@ -490,7 +490,7 @@ describe("Dialogue", () => {
                 [defaultAction]: handler,
                 [onAudio]: () => null
             }
-        ], [{ type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         await dialogue.consume(mock.message('Blah'), mock.apiRequest);
         expect(handler).toHaveBeenCalled();      
     });
@@ -502,7 +502,7 @@ describe("Dialogue", () => {
                 [onText]: () => null,
                 [defaultAction]: () => fail('Should not be called')
             },
-        ], [{ type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         await dialogue.consume(mock.message('Amazing'), mock.apiRequest)
     });
     
@@ -524,9 +524,9 @@ describe("Dialogue", () => {
                 [onText]: () => null,
                 [defaultAction]: () => fail('Should not be called')
             },            
-        ], [{ type: 'expect', path: `mock::I write like` }, { type: 'expect', path: `mock::I sound like` }]);
+        ], [{ type: 'expect', path: `mock::I write like` }, { type: 'expect', path: `mock::I sound like` }, { type: "label", path:"mock::", inline: false}]);
         const result = await dialogue.consume(mock.multimedia("audio", "recording.wav"), mock.apiRequest);
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: `mock::I write like` }, { type: 'expect', path: `mock::I sound like` }]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: `mock::I write like` }, { type: 'expect', path: `mock::I sound like` }, { type: "label", path:"mock::", inline: false}]));
         expect(result).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: `Sorry, I didn't quite catch that, I was expecting a file` }),
             expect.objectContaining({ text: `What do you write like?` }),
@@ -544,9 +544,9 @@ describe("Dialogue", () => {
                 [onAudio]: () => { throw new UnexpectedInputError('Your voice is too high pitched'); }
             },
             ask `How are you?`
-        ], [{ type: 'expect', path: `mock::I sound like` }]);
+        ], [{ type: 'expect', path: `mock::I sound like` }, { type: "label", path:"mock::", inline: false}]);
         const result = await dialogue.consume(mock.multimedia("audio", "recording.wav"), mock.apiRequest);
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: `mock::I sound like` }]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: `mock::I sound like` }, { type: "label", path:"mock::", inline: false}]));
         expect(result).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: `Your voice is too high pitched` }),
             expect.objectContaining({ text: `What do you sound like?` }),
@@ -562,7 +562,7 @@ describe("Dialogue", () => {
             expect_ `I sound like`, {
                 [onAudio]: () => { throw new UnexpectedInputError('Your voice is too high pitched', false); }
             }
-        ], [{ type: 'expect', path: `mock::I sound like` }]);
+        ], [{ type: 'expect', path: `mock::I sound like` }, { type: "label", path:"mock::", inline: false}]);
         const result = await dialogue.consume(mock.multimedia("audio", "recording.wav"), mock.apiRequest);
         expect(result).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: `Your voice is too high pitched` }),
@@ -639,7 +639,7 @@ describe("Dialogue", () => {
         ], []);
         await dialogue.consume(mock.postback(), mock.apiRequest);
         const result = await dialogue.consume(mock.postback(button!.postbacks![0][0]), mock.apiRequest);
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'label', path: 'mock::', inline: true }, { type: 'label', path: 'mock::subroutine', inline: false }]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: 'label', path: 'mock::', inline: false }, { type: 'label', path: 'mock::subroutine', inline: false }, { type: "label", path:"mock::", inline: false}]));
         expect(result).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: 'Running subroutine' }), 
             expect.objectContaining({ text: 'Hi!' }), 
@@ -659,10 +659,10 @@ describe("Dialogue", () => {
             button = buttons('some buttons', 'Some buttons', { 'Run': () => goto `subroutine` }),
             'previous_label',
             say `Hi!`,
-        ], [{ type: 'label', path: 'mock::previous_label'}]);
+        ], [{ type: 'label', path: 'mock::previous_label'}, { type: "label", path:"mock::", inline: false}]);
         await dialogue.consume(mock.postback(), mock.apiRequest);
         const result = await dialogue.consume(mock.postback(button!.postbacks![0][0]), mock.apiRequest);
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: "label", path: "mock::previous_label" }, { type: "label", path: 'mock::subroutine', inline: false}, { type: 'label', path: 'mock::previous_label'}]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: "label", path: "mock::previous_label" }, { type: "label", path: 'mock::subroutine', inline: false}, { type: 'label', path: 'mock::previous_label'}, { type: "label", path:"mock::", inline: false}]));
         expect(result).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: 'Running subroutine' }), 
             expect.objectContaining({ text: 'Hi!' }), 
@@ -685,10 +685,10 @@ describe("Dialogue", () => {
                 'Amazing': () => goto `label`
             },
             say `Goodbye!`,
-        ], [{ type: 'expect', path: 'mock::I feel'}]);
+        ], [{ type: 'expect', path: 'mock::I feel'}, { type: "label", path:"mock::", inline: false}]);
         await dialogue.consume(mock.postback(), mock.apiRequest);
         const result = await dialogue.consume(mock.postback(button!.postbacks![0][0]), mock.apiRequest);
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: "expect", path: "mock::I feel" },{ type: "label", path: "mock::subroutine", inline: false }, { type: 'expect', path: 'mock::I feel'}]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'complete'}, { type: "expect", path: "mock::I feel" },{ type: "label", path: "mock::subroutine", inline: false }, { type: 'expect', path: 'mock::I feel'}, { type: "label", path:"mock::", inline: false}]));
         expect(result).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: 'Running subroutine' }), 
             expect.objectContaining({ text: 'Goodbye!' }), 
@@ -743,7 +743,7 @@ describe("Dialogue", () => {
             say `Don't say this`,
             'label',
             say `Goodbye`
-        ], [{ type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         const result = await dialogue.consume(mock.message('Amazing'), mock.apiRequest);
         expect(result).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: 'Goodbye' }), 
@@ -807,11 +807,11 @@ describe("Dialogue", () => {
             expect_ `I am at`, {
                 [location]: null
             },
-        ], [{ type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         await dialogue.consume(mock.message('Amazing'), mock.apiRequest)
         expect(delegate.saveState).not.toHaveBeenCalledWith(expect.arrayContaining([{ type: 'complete' }]));
         const result = await dialogue.consume(mock.location(50, 1), mock.apiRequest);
-        expect(delegate.saveState).toHaveBeenCalledWith((expect.stringMatching(JSON.stringify([{ type: 'complete' }]))));
+        expect(delegate.saveState).toHaveBeenCalledWith((expect.stringMatching(JSON.stringify([{ type: 'complete' }, { type: "label", path:"mock::", inline: false}]))));
         expect(result).not.toEqual(expect.arrayContaining([
             expect.objectContaining({ text: `But why?` })
         ]));
@@ -830,9 +830,9 @@ describe("Dialogue", () => {
             expect_ `I am at`, {
                 [location]: null
             }
-        ], [{ type: 'expect', path: `mock::I am at`}, { type: 'label', path: `mock::label`, inline: false }, { type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I am at`}, { type: 'label', path: `mock::label`, inline: false }, { type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         const result = await dialogue.consume(mock.message('Wrong input'), mock.apiRequest)
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: `mock::I am at`}, { type: 'label', path: `mock::label`, inline: false }, { type: 'expect', path: `mock::I feel` }]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: `mock::I am at`}, { type: 'label', path: `mock::label`, inline: false }, { type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]));
         expect(result).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: `Where are you?` })
         ]));
@@ -850,7 +850,7 @@ describe("Dialogue", () => {
                 [onText]: handler
             },
             say `Goodbye`            
-        ], [{ type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         const result = await dialogue.consume(mock.message('Amazing'), mock.apiRequest);
         expect(handler).toHaveBeenCalledWith('Amazing');    
         expect(result).toEqual(expect.arrayContaining([
@@ -864,7 +864,7 @@ describe("Dialogue", () => {
             expect_ `I feel`, {
                 'Amazing': () => expect_ `I feel`
             },
-        ], [{ type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         await dialogue.consume(mock.message('Amazing'), mock.apiRequest)
             .then(() => fail('Did not throw'))
             .catch(e => {
@@ -880,7 +880,7 @@ describe("Dialogue", () => {
                 'Amazing': () => new Object()
             },
             say `Goodbye`
-        ], [{ type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         const result = await dialogue.consume(mock.message('Amazing'), mock.apiRequest);
         expect(result).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: 'Goodbye' }), 
@@ -903,7 +903,7 @@ describe("Dialogue", () => {
             expect_ `I feel`, {
                 'Amazing': null
             },
-        ], [{ type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         const handler = jest.fn();
         dialogue.setKeywordHandler('postback_action', handler)
         await dialogue.consume(mock.postback('postback_action'), mock.apiRequest)
@@ -917,7 +917,7 @@ describe("Dialogue", () => {
             expect_ `I feel`, {
                 'Amazing': responseHandler
             }
-        ], [{ type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         const handler = jest.fn();
         dialogue.setKeywordHandler('Amazing', handler)
         await dialogue.consume(mock.message('Amazing'), mock.apiRequest)
@@ -935,10 +935,10 @@ describe("Dialogue", () => {
             expect_ `I feel that way because`, {
                 'Just cos': null
             },
-        ], [{ type: 'expect', path: `mock::I feel` }, { type: 'expect', path: `mock::I feel that way because` }]);
+        ], [{ type: 'expect', path: `mock::I feel` }, { type: 'expect', path: `mock::I feel that way because` }, { type: "label", path:"mock::", inline: false}]);
         dialogue.setKeywordHandler('start over', 'restart')
         const result = await dialogue.consume(mock.message('Start over'), mock.apiRequest)
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: 'mock::I feel' }]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: 'mock::I feel' }, { type: "label", path:"mock::", inline: false}]));
         expect(result).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: `How are you?` })
         ]));
@@ -958,11 +958,11 @@ describe("Dialogue", () => {
                 'Just cos': null,
                 [onUndo]: () => fail('Wrong undo handler called')
             },
-        ], [{ type: 'expect', path: `mock::I feel that way because` }, { type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel that way because` }, { type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         dialogue.setKeywordHandler('back', 'undo')
         const result = await dialogue.consume(mock.message('back'), mock.apiRequest)
         expect(undoHandler).toHaveBeenCalledTimes(1);
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: `mock::I feel` }]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]));
         expect(result).not.toEqual(expect.arrayContaining([
             expect.objectContaining({ text: `Don't repeat this on undo` })
         ]));
@@ -984,11 +984,11 @@ describe("Dialogue", () => {
                 'Just cos': null,
                 [onUndo]: () => undoHandler()
             },
-        ], [{type: 'complete'}, { type: 'expect', path: `mock::I feel that way because` }, { type: 'expect', path: `mock::I feel` }]);
+        ], [{type: 'complete'}, { type: 'expect', path: `mock::I feel that way because` }, { type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         dialogue.setKeywordHandler('back', 'undo')
         const result = await dialogue.consume(mock.message('back'), mock.apiRequest)
         expect(undoHandler).toHaveBeenCalledTimes(1);
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: `mock::I feel that way because` }, { type: 'expect', path: `mock::I feel` }]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: `mock::I feel that way because` }, { type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]));
         expect(result).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: `But why?` })
         ]));
@@ -1013,11 +1013,11 @@ describe("Dialogue", () => {
                 'Just cos': null,
                 [onUndo]: () => fail('Wrong undo handler called')
             },
-        ], [{ type: 'expect', path: `mock::I feel that way because` }, { type: 'label', path: `mock::why` }, { type: 'expect', path: `mock::I feel` }]);
+        ], [{ type: 'expect', path: `mock::I feel that way because` }, { type: 'label', path: `mock::why` }, { type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]);
         dialogue.setKeywordHandler('back', 'undo')
         const result = await dialogue.consume(mock.message('back'), mock.apiRequest)
         expect(undoHandler).toHaveBeenCalledTimes(1);
-        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: `mock::I feel` }]));
+        expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([{ type: 'expect', path: `mock::I feel` }, { type: "label", path:"mock::", inline: false}]));
         expect(result).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: `How are you?` })
         ]));
@@ -1071,6 +1071,7 @@ describe("Dialogue", () => {
         expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([
             { type: 'complete' },
             { type: "label", path: "second::hi", inline: true },
+            { type: "label", path:"first::", inline: false}
         ]));
     });
     
@@ -1089,6 +1090,7 @@ describe("Dialogue", () => {
         expect(delegate.saveState).toHaveBeenCalledWith(JSON.stringify([
             { type: 'complete' },
             { type: "label", path: "second::", inline: true },
+            { type: "label", path:"first::", inline: false}            
         ]));
     });
     
