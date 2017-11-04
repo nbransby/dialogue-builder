@@ -25,7 +25,7 @@ export declare class UnexpectedInputError extends Error {
 }
 export declare class Directive {
     private text;
-    readonly script: string;
+    readonly script?: string;
     readonly name: string;
     constructor(text: string);
     readonly path: string;
@@ -72,7 +72,7 @@ export interface Delegate {
 }
 export declare class Dialogue {
     private readonly defaultScript;
-    static currentScript: string;
+    static currentScript?: string;
     private readonly delegate;
     private readonly handlers;
     private readonly state;
