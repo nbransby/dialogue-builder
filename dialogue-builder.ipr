@@ -6,6 +6,19 @@
     </profile>
     <version value="1.0" />
   </component>
+  <component name="JavaScriptLibraryMappings">
+    <includedPredefinedLibrary name="Node.js Core" />
+    <excludedPredefinedLibrary name="HTML" />
+  </component>
+  <component name="ProjectDictionaryState">
+    <dictionary name="nbran">
+      <words>
+        <w>emojis</w>
+        <w>postback</w>
+        <w>postbacks</w>
+      </words>
+    </dictionary>
+  </component>
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/dialogue-builder.iml" filepath="$PROJECT_DIR$/dialogue-builder.iml" />
@@ -13,6 +26,9 @@
   </component>
   <component name="ProjectRootManager">
     <output url="file://$PROJECT_DIR$/out" />
+  </component>
+  <component name="TypeScriptCompiler">
+    <option name="showAllErrors" value="true" />
   </component>
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />

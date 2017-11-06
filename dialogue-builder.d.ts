@@ -3,9 +3,6 @@ import builder = require('claudia-bot-builder');
 import Message = builder.Message;
 import BaseTemplate = builder.fbTemplate.BaseTemplate;
 import Text = builder.fbTemplate.Text;
-import List = builder.fbTemplate.List;
-import Button = builder.fbTemplate.Button;
-import Generic = builder.fbTemplate.Generic;
 import Attachment = builder.fbTemplate.Attachment;
 export declare const location: symbol;
 export declare const onText: symbol;
@@ -28,7 +25,7 @@ export declare class Directive {
     readonly script?: string;
     readonly name: string;
     constructor(text: string);
-    readonly path: string;
+    path(script: string): string;
     toString(): string;
     static assertEqual(a: Directive | undefined, b: Directive | undefined): void;
 }
@@ -39,7 +36,7 @@ export declare class Goto extends Directive {
 }
 export declare class Rollback extends Goto {
 }
-export declare type Script = Array<BaseTemplate | Label | Directive | ResponseHandler>;
+export declare type Script = Array<BaseTemplate | TemplateBuilder | Label | Directive | ResponseHandler>;
 export declare function say(template: TemplateStringsArray, ...substitutions: any[]): Text;
 export declare function ask(template: TemplateStringsArray, ...substitutions: any[]): Text;
 export declare function expect(template: TemplateStringsArray, ...substitutions: any[]): Expect;
@@ -49,6 +46,13 @@ export declare function audio(template: TemplateStringsArray, ...substitutions: 
 export declare function video(template: TemplateStringsArray, ...substitutions: any[]): Attachment;
 export declare function image(template: TemplateStringsArray, ...substitutions: any[]): Attachment;
 export declare function file(template: TemplateStringsArray, ...substitutions: any[]): Attachment;
+export declare class TemplateBuilder {
+    readonly identifier: string;
+    private readonly builder;
+    readonly postbacks: [string, () => Goto | void | Promise<Goto | void>][];
+    constructor(identifier: string, builder: (script: string) => BaseTemplate);
+    build(script: string): BaseTemplate;
+}
 export declare type ButtonHandler = {
     [title: string]: URLButton | (() => Goto | void | Promise<Goto | void>);
 };
@@ -62,9 +66,9 @@ export interface Bubble {
     image?: string;
     buttons?: ButtonHandler;
 }
-export declare function buttons(id: string, text: string, handler: ButtonHandler): Button;
-export declare function list(id: string, type: 'compact' | 'large', bubbles: Bubble[], handler?: ButtonHandler): List;
-export declare function generic(id: string, type: 'horizontal' | 'square', bubbles: Bubble[]): Generic;
+export declare function buttons(id: string, text: string, handler: ButtonHandler): TemplateBuilder;
+export declare function list(id: string, type: 'compact' | 'large', bubbles: Bubble[], handler?: ButtonHandler): TemplateBuilder;
+export declare function generic(id: string, type: 'horizontal' | 'square', bubbles: Bubble[]): TemplateBuilder;
 export interface Delegate {
     loadScript(name: string): Script;
     loadState(): string | undefined | Promise<string | undefined>;
@@ -72,7 +76,6 @@ export interface Delegate {
 }
 export declare class Dialogue {
     private readonly defaultScript;
-    static currentScript?: string;
     private readonly delegate;
     private readonly handlers;
     private readonly state;
@@ -101,8 +104,6 @@ declare module "claudia-bot-builder" {
         interface BaseTemplate {
             getReadingDuration: () => number;
             setBaseUrl: (url: string) => this;
-            postbacks?: [string, () => Goto | void | Promise<Goto | void>][];
-            identifier?: string;
         }
         interface Text {
             template: {

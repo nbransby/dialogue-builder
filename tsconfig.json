@@ -5,16 +5,13 @@
         "declaration": true,
         "pretty": true,
         "sourceMap": true,
-        "strictNullChecks": true,
-        "alwaysStrict": true,
+        "strict": true,
         "allowUnreachableCode": false,
         "allowSyntheticDefaultImports": false,
         "allowUnusedLabels": false,
         "preserveConstEnums": true,
         "noUnusedParameters": true,
         "noUnusedLocals": true,
-        "noImplicitThis": true,
-        "noImplicitReturns": true,
-        "noImplicitAny": true
+        "noImplicitReturns": true
     }
 }

@@ -21,11 +21,11 @@
     "eslint": "^3.15.0",
     "eslint-plugin-node": "^3.0.5",
     "gulp": "^3.9.1",
-    "jest": "^21.1.0",
+    "jest": "^21.2.1",
     "line-number": "^0.1.0",
     "nyc": "^10.0.0",
-    "ts-jest": "^21.0.1",
-    "typescript": "^2.2.1"
+    "ts-jest": "^21.1.4",
+    "typescript": "^2.6.1"
   },
   "scripts": {
     "pretest": "tsc && babel dialogue-builder.js -o dialogue-builder.js && babel tests.js -o tests.js && eslint dialogue-builder.js tests.js",
