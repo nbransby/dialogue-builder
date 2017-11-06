@@ -1,3 +1,4 @@
+import "babel-polyfill";
 const emojiRegex = require('emoji-regex');
 import assert = require('assert');
 import {Request} from 'claudia-api-builder'

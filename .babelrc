@@ -1,8 +1,10 @@
 {
   "presets": [
-    ["env", {
+    [ "env", {
+      "debug": true,
+      "useBuiltIns": true,
       "targets": {
-        "node": 6.10
+        "node": "6.10"
       }
     }]
   ]

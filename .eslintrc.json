@@ -13,6 +13,8 @@
         "sourceType": "module"
     },
     "rules": {
-        "node/no-unsupported-features": "error"
+        "node/no-unsupported-features": ["error", {
+            "ignores": ["Object.entries"]
+        }]
     }
 }

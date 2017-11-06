@@ -8,6 +8,7 @@
     "node": ">=6"
   },
   "dependencies": {
+    "babel-polyfill": "^6.26.0",
     "claudia-bot-builder": "^2.15.0",
     "emoji-regex": "^6.4.2"
   },

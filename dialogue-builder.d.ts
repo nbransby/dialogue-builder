@@ -1,3 +1,4 @@
+import "babel-polyfill";
 import { Request } from 'claudia-api-builder';
 import builder = require('claudia-bot-builder');
 import Message = builder.Message;
