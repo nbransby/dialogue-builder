@@ -136,7 +136,7 @@ export class TemplateBuilder {
     }
 }
 
-export type ButtonHandler = { [title: string]: URLButton | (() => Goto | void | Promise<Goto | void>) }
+export type ButtonHandler = any//{ [title: string]: URLButton | (() => Goto | void | Promise<Goto | void>) }
 
 export interface URLButton {
     url: string
@@ -331,7 +331,7 @@ export class Dialogue {
         const output: Array<BaseTemplate> = unexpectedInput && unexpectedInput.localizedMessage ? [new Text(unexpectedInput.localizedMessage)] : [];
         //gather output
         for (let i = this.state.startLine; i < this.script.length; i++) {
-            const element = this.script[i];
+            const element = this.script[i] instanceof TemplateBuilder ? this.script[i].build(this.state.currentScript) : this.script[i];
             //if element is output
             if (element instanceof BaseTemplate) {
                 if (!this.outputFilter || this.outputFilter(element)) output.push(element);
@@ -350,8 +350,6 @@ export class Dialogue {
                     Object.keys(this.script[i + 1]).forEach(key => output[output.length - 1].addQuickReply(key, key));
                 }
                 return insertPauses(output).map(e => e.get());
-            } else if (typeof element === 'function') {
-                output.push(element(this.state.currentScript));
             }
         }
         //persist completion 
