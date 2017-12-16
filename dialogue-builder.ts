@@ -207,7 +207,7 @@ export function generic(id: string, type: 'horizontal' | 'square', bubbles: Bubb
             if (bubble.image) generic.addImage(bubble.image);
             if (bubble.buttons && bubble.buttons[defaultAction]) {
                 const button = bubble.buttons[defaultAction];
-                generic.addDefaultAction(typeof button !== "function" ? button.url : `${script}::default action of ${ordinals[index]} bubble of generic '${id}'`)
+                generic.addUrl(typeof button !== "function" ? button.url : `${script}::default action of ${ordinals[index]} bubble of generic '${id}'`)
             }
             bubble.buttons && Object.entries(bubble.buttons).forEach(([k, v]) =>
                 generic.addButton(k, typeof v !== "function" ? v.url : `${script}::'${k}' button in ${ordinals[index]} bubble of generic '${script}::${id}'`)

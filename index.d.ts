@@ -122,7 +122,7 @@ declare module "claudia-bot-builder" {
                 bubbles: Array<{ title: string, subtitle?: string, image_url?: string }>
                 addBubble(title: string, subtitle?: string): this
                 getLastBubble(): { title: string, subtitle?: string, image_url?: string }
-                addDefaultAction(url: string): this
+                addUrl(url: string): this
                 addImage(url: string): this
                 addButton(title: string, value: string): this
                 addShareButton(shareContent?: string): this
