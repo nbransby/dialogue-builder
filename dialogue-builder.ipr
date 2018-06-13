@@ -14,6 +14,7 @@
     <dictionary name="nbran">
       <words>
         <w>emojis</w>
+        <w>gotos</w>
         <w>postback</w>
         <w>postbacks</w>
       </words>

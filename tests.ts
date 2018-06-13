@@ -704,7 +704,7 @@ describe("Dialogue", () => {
             'label',
             ask `How are you?`,
         ], []);
-        dialogue.execute(goto `label`);
+        await dialogue.execute(goto `label`);
         const result = await dialogue.consume(mock.postback(), mock.apiRequest);
         expect(result).toEqual(expect.arrayContaining([
             expect.objectContaining({ text: `How are you?` })
