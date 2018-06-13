@@ -136,11 +136,12 @@ export class TemplateBuilder {
     }
 }
 
-export type ButtonHandler = any//{ [title: string]: URLButton | (() => Goto | void | Promise<Goto | void>) }
+export type ButtonHandler = { [title: string]: URLButton | (() => Goto | void | Promise<Goto | void>) }
 
 export interface URLButton {
     url: string
     height?: 'compact' | 'tall' | 'full'
+    shareable?: boolean
 }
 
 export interface Bubble {
@@ -154,7 +155,7 @@ export function buttons(id: string, text: string, handler: ButtonHandler): Templ
     const builder = new TemplateBuilder(`buttons '${id}'`, (script: string) => {
         const buttons = new Button(text);
         Object.entries(handler).forEach(([k, v]) =>
-            buttons.addButton(k, typeof v !== "function" ? v.url : `${script}::'${k}' button in buttons '${id}'`)
+            buttons.addButton(k, typeof v !== "function" ? v.url : `${script}::'${k}' button in buttons '${id}'`, toOptions(v))
         );
         return buttons;
     });
@@ -162,6 +163,13 @@ export function buttons(id: string, text: string, handler: ButtonHandler): Templ
         typeof v == "function" && builder.postbacks.push([`'${k}' button in buttons '${id}'`, v])
     );
     return builder;
+}
+
+function toOptions(button: URLButton | Function): undefined | object {
+    return typeof button === "function" ? undefined : {
+        webview_height_ratio: button.height,
+        webview_share_button: button.shareable
+    }
 }
 
 export function list(id: string, type: 'compact' | 'large', bubbles: Bubble[], handler?: ButtonHandler): TemplateBuilder {
@@ -172,14 +180,14 @@ export function list(id: string, type: 'compact' | 'large', bubbles: Bubble[], h
             if (bubble.image) list.addImage(bubble.image);
             if (bubble.buttons && bubble.buttons[defaultAction]) {
                 const button = bubble.buttons[defaultAction];
-                list.addDefaultAction(typeof button !== "function" ? button.url : `${script}::default action of ${ordinals[index]} bubble of list '${id}'`)
+                list.addDefaultAction(typeof button !== "function" ? button.url : `${script}::default action of ${ordinals[index]} bubble of list '${id}'`, toOptions(button))
             }
             bubble.buttons && Object.entries(bubble.buttons).forEach(([k, v]) =>
-                list.addButton(k, typeof v !== "function" ? v.url : `${script}::'${k}' button in ${ordinals[index]} bubble of list '${script}::${id}'`)
+                list.addButton(k, typeof v !== "function" ? v.url : `${script}::'${k}' button in ${ordinals[index]} bubble of list '${script}::${id}'`, toOptions(v))
             );
         });
         handler && Object.entries(handler).forEach(([k, v]) =>
-            list.addListButton(k, typeof v !== "function" ? v.url : `${script}::'${k}' button in list '${id}'`)
+            list.addListButton(k, typeof v !== "function" ? v.url : `${script}::'${k}' button in list '${id}'`, toOptions(v))
         );
         return list;
     });
@@ -210,7 +218,7 @@ export function generic(id: string, type: 'horizontal' | 'square', bubbles: Bubb
                 generic.addUrl(typeof button !== "function" ? button.url : `${script}::default action of ${ordinals[index]} bubble of generic '${id}'`)
             }
             bubble.buttons && Object.entries(bubble.buttons).forEach(([k, v]) =>
-                generic.addButton(k, typeof v !== "function" ? v.url : `${script}::'${k}' button in ${ordinals[index]} bubble of generic '${script}::${id}'`)
+                generic.addButton(k, typeof v !== "function" ? v.url : `${script}::'${k}' button in ${ordinals[index]} bubble of generic '${script}::${id}'`, toOptions(v))
             );
         });
         return generic;

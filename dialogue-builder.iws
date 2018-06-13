@@ -2,9 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="f6cbb216-0b90-4665-a04b-3309ed06ebe4" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/dialogue-builder.iws" afterPath="$PROJECT_DIR$/dialogue-builder.iws" />
-      <change beforePath="$PROJECT_DIR$/dialogue-builder.ts" afterPath="$PROJECT_DIR$/dialogue-builder.ts" />
-      <change beforePath="$PROJECT_DIR$/index.d.ts" afterPath="$PROJECT_DIR$/index.d.ts" />
+      <change beforePath="$PROJECT_DIR$/dialogue-builder.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/dialogue-builder.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dialogue-builder.iws" beforeDir="false" afterPath="$PROJECT_DIR$/dialogue-builder.iws" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dialogue-builder.ts" beforeDir="false" afterPath="$PROJECT_DIR$/dialogue-builder.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/index.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/index.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
     </list>
     <ignored path="$PROJECT_DIR$/out/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -26,9 +28,8 @@
       <file leaf-file-name="tests.ts" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/tests.ts">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="14484">
-              <caret line="427" column="33" lean-forward="false" selection-start-line="427" selection-start-column="33" selection-end-line="427" selection-end-column="33" />
-              <folding />
+            <state relative-caret-position="7416">
+              <caret line="413" selection-start-line="411" selection-end-line="413" />
             </state>
           </provider>
         </entry>
@@ -36,9 +37,8 @@
       <file leaf-file-name="package.json" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/package.json">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="170">
-              <caret line="5" column="24" lean-forward="false" selection-start-line="5" selection-start-column="24" selection-end-line="5" selection-end-column="24" />
-              <folding />
+            <state relative-caret-position="198">
+              <caret line="11" column="54" selection-start-line="11" selection-start-column="54" selection-end-line="11" selection-end-column="54" />
             </state>
           </provider>
         </entry>
@@ -46,9 +46,8 @@
       <file leaf-file-name="dialogue-builder.ts" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="544">
-              <caret line="136" column="1" lean-forward="true" selection-start-line="136" selection-start-column="1" selection-end-line="136" selection-end-column="1" />
-              <folding />
+            <state relative-caret-position="392">
+              <caret line="217" column="53" selection-start-line="217" selection-start-column="53" selection-end-line="217" selection-end-column="53" />
             </state>
           </provider>
         </entry>
@@ -56,9 +55,20 @@
       <file leaf-file-name="index.d.ts" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/index.d.ts">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="103">
-              <caret line="110" column="32" lean-forward="false" selection-start-line="110" selection-start-column="16" selection-end-line="110" selection-end-column="32" />
-              <folding />
+            <state relative-caret-position="244">
+              <caret line="113" column="51" selection-start-line="113" selection-start-column="51" selection-end-line="113" selection-end-column="51" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="dialogue-builder.d.ts" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/dialogue-builder.d.ts">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="198">
+              <caret line="62" column="13" selection-start-line="62" selection-start-column="13" selection-end-line="62" selection-end-column="13" />
+              <folding>
+                <element signature="e#0#24#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -66,9 +76,8 @@
       <file leaf-file-name=".eslintrc.json" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/.eslintrc.json">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="646">
-              <caret line="19" column="1" lean-forward="false" selection-start-line="19" selection-start-column="1" selection-end-line="19" selection-end-column="1" />
-              <folding />
+            <state relative-caret-position="342">
+              <caret line="19" column="1" selection-start-line="19" selection-start-column="1" selection-end-line="19" selection-end-column="1" />
             </state>
           </provider>
         </entry>
@@ -76,9 +85,8 @@
       <file leaf-file-name="dialogue-builder.js" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/dialogue-builder.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="476">
-              <caret line="14" column="33" lean-forward="false" selection-start-line="14" selection-start-column="0" selection-end-line="15" selection-end-column="0" />
-              <folding />
+            <state relative-caret-position="252">
+              <caret line="14" column="33" selection-start-line="14" selection-end-line="15" />
             </state>
           </provider>
         </entry>
@@ -86,9 +94,8 @@
       <file leaf-file-name=".babelrc" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/.babelrc">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="136">
-              <caret line="4" column="14" lean-forward="false" selection-start-line="4" selection-start-column="0" selection-end-line="5" selection-end-column="0" />
-              <folding />
+            <state relative-caret-position="72">
+              <caret line="4" column="14" selection-start-line="4" selection-end-line="5" />
             </state>
           </provider>
         </entry>
@@ -96,9 +103,8 @@
       <file leaf-file-name="launch.json" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/.vscode/launch.json">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="714">
-              <caret line="21" column="1" lean-forward="false" selection-start-line="21" selection-start-column="1" selection-end-line="21" selection-end-column="1" />
-              <folding />
+            <state relative-caret-position="378">
+              <caret line="21" column="1" selection-start-line="21" selection-start-column="1" selection-end-line="21" selection-end-column="1" />
             </state>
           </provider>
         </entry>
@@ -106,9 +112,8 @@
       <file leaf-file-name="tsconfig.json" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/tsconfig.json">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="476">
-              <caret line="14" column="33" lean-forward="false" selection-start-line="14" selection-start-column="33" selection-end-line="14" selection-end-column="33" />
-              <folding />
+            <state relative-caret-position="252">
+              <caret line="14" column="33" selection-start-line="14" selection-start-column="33" selection-end-line="14" selection-end-column="33" />
             </state>
           </provider>
         </entry>
@@ -127,15 +132,14 @@
       <find>messenger_extensions</find>
       <find>build</find>
       <find>addDefaultAction</find>
+      <find>del</find>
+      <find>list(</find>
+      <find>compact</find>
+      <find>Button(</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
-  </component>
-  <component name="GradleLocalSettings">
-    <option name="externalProjectsViewState">
-      <projects_view />
-    </option>
   </component>
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
@@ -145,6 +149,8 @@
         <option value="$PROJECT_DIR$/tests.ts" />
         <option value="$PROJECT_DIR$/.babelrc" />
         <option value="$PROJECT_DIR$/.eslintrc.json" />
+        <option value="$PROJECT_DIR$/dialogue-builder.d.ts" />
+        <option value="$PROJECT_DIR$/package.json" />
         <option value="$PROJECT_DIR$/index.d.ts" />
         <option value="$PROJECT_DIR$/dialogue-builder.ts" />
       </list>
@@ -186,27 +192,16 @@
     <handled-path value="$PROJECT_DIR$/node_modules" />
   </component>
   <component name="ProjectFrameBounds" extendedState="6" fullScreen="true">
-    <option name="x" value="-11" />
-    <option name="y" value="-11" />
-    <option name="width" value="1517" />
-    <option name="height" value="2122" />
+    <option name="x" value="-10" />
+    <option name="y" value="2" />
+    <option name="width" value="3020" />
+    <option name="height" value="1930" />
   </component>
   <component name="ProjectView">
-    <navigator currentView="ProjectPane" proportions="" version="1">
-      <flattenPackages />
-      <showMembers />
-      <showModules />
-      <showLibraryContents />
-      <hideEmptyPackages />
-      <abbreviatePackageNames />
-      <autoscrollToSource />
-      <autoscrollFromSource />
-      <sortByType />
-      <manualOrder />
+    <navigator proportions="" version="1">
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="AndroidView" />
       <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
@@ -215,32 +210,24 @@
               <item name="dialogue-builder" type="b2602c69:ProjectViewProjectNode" />
               <item name="dialogue-builder" type="462c0819:PsiDirectoryNode" />
             </path>
-            <path>
-              <item name="dialogue-builder" type="b2602c69:ProjectViewProjectNode" />
-              <item name="dialogue-builder" type="462c0819:PsiDirectoryNode" />
-              <item name=".vscode" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="dialogue-builder" type="b2602c69:ProjectViewProjectNode" />
-              <item name="dialogue-builder" type="462c0819:PsiDirectoryNode" />
-              <item name="dialogue-builder.ts" type="620a8d5e:NestingTreeNode" />
-            </path>
           </expand>
           <select />
         </subPane>
       </pane>
       <pane id="PackagesPane" />
-      <pane id="Scratches" />
+      <pane id="AndroidView" />
     </panes>
   </component>
   <component name="PropertiesComponent">
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="nodejs_interpreter_path" value="C:/Program Files/nodejs9/node" />
-    <property name="nodejs.jest.jest_package" value="$PROJECT_DIR$/node_modules/jest" />
-    <property name="settings.editor.selected.configurable" value="settings.nodejs" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../claudia-bot-builder" />
     <property name="javascript.nodejs.core.library.configured.version" value="9.0.0" />
     <property name="js.buildTools.gulp.gulp_package_dir" value="$PROJECT_DIR$/node_modules/gulp" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../claudia-bot-builder" />
+    <property name="nodejs.jest.jest_package" value="$PROJECT_DIR$/node_modules/jest" />
+    <property name="nodejs_interpreter_path" value="C:/Program Files/nodejs9/node" />
+    <property name="nodejs_package_manager_path" value="npm" />
+    <property name="settings.editor.selected.configurable" value="settings.nodejs" />
+    <property name="ts.external.directory.path" value="$PROJECT_DIR$/node_modules/typescript/lib" />
   </component>
   <component name="RunDashboard">
     <option name="ruleStates">
@@ -256,29 +243,12 @@
   </component>
   <component name="RunManager" selected="Jest.Dialogue">
     <configuration default="true" type="Applet" factoryName="Applet">
-      <option name="HTML_USED" value="false" />
-      <option name="WIDTH" value="400" />
-      <option name="HEIGHT" value="300" />
       <option name="POLICY_FILE" value="$APPLICATION_HOME_DIR$/bin/appletviewer.policy" />
-      <module />
     </configuration>
     <configuration default="true" type="Application" factoryName="Application">
-      <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea" />
-      <option name="MAIN_CLASS_NAME" />
-      <option name="VM_PARAMETERS" />
-      <option name="PROGRAM_PARAMETERS" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
-      <option name="ALTERNATIVE_JRE_PATH" />
-      <option name="ENABLE_SWING_INSPECTOR" value="false" />
-      <option name="ENV_VARIABLES" />
-      <option name="PASS_PARENT_ENVS" value="true" />
-      <module name="" />
-      <envs />
     </configuration>
     <configuration default="true" type="JUnit" factoryName="JUnit">
-      <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea" />
-      <module name="" />
       <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
       <option name="ALTERNATIVE_JRE_PATH" />
       <option name="PACKAGE_NAME" />
@@ -288,12 +258,10 @@
       <option name="VM_PARAMETERS" value="-ea" />
       <option name="PARAMETERS" />
       <option name="WORKING_DIRECTORY" value="%MODULE_WORKING_DIR%" />
-      <option name="ENV_VARIABLES" />
       <option name="PASS_PARENT_ENVS" value="true" />
       <option name="TEST_SEARCH_SCOPE">
         <value defaultName="singleModule" />
       </option>
-      <envs />
       <patterns />
     </configuration>
     <configuration name="Dialogue" type="JavaScriptTestRunnerJest" factoryName="Jest" temporary="true" nameIsGenerated="true">
@@ -343,16 +311,7 @@
         <test-name value="resumes where it paused on receiving a response" />
       </test-names>
     </configuration>
-    <configuration default="true" type="Remote" factoryName="Remote">
-      <option name="USE_SOCKET_TRANSPORT" value="true" />
-      <option name="SERVER_MODE" value="false" />
-      <option name="SHMEM_ADDRESS" value="javadebug" />
-      <option name="HOST" value="localhost" />
-      <option name="PORT" value="5005" />
-    </configuration>
     <configuration default="true" type="TestNG" factoryName="TestNG">
-      <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea" />
-      <module name="" />
       <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
       <option name="ALTERNATIVE_JRE_PATH" />
       <option name="SUITE_NAME" />
@@ -365,17 +324,21 @@
       <option name="PARAMETERS" />
       <option name="WORKING_DIRECTORY" value="%MODULE_WORKING_DIR%" />
       <option name="OUTPUT_DIRECTORY" />
-      <option name="ANNOTATION_TYPE" />
-      <option name="ENV_VARIABLES" />
       <option name="PASS_PARENT_ENVS" value="true" />
       <option name="TEST_SEARCH_SCOPE">
         <value defaultName="singleModule" />
       </option>
       <option name="USE_DEFAULT_REPORTERS" value="false" />
       <option name="PROPERTIES_FILE" />
-      <envs />
       <properties />
       <listeners />
+    </configuration>
+    <configuration default="true" type="Remote" factoryName="Remote">
+      <option name="USE_SOCKET_TRANSPORT" value="true" />
+      <option name="SERVER_MODE" value="false" />
+      <option name="SHMEM_ADDRESS" value="javadebug" />
+      <option name="HOST" value="localhost" />
+      <option name="PORT" value="5005" />
     </configuration>
     <configuration name="&lt;template&gt;" type="#org.jetbrains.idea.devkit.run.PluginConfigurationType" default="true" selected="false">
       <option name="VM_PARAMETERS" value="-Xmx512m -Xms256m -XX:MaxPermSize=250m -ea" />
@@ -397,25 +360,22 @@
       <node-interpreter value="project" />
       <envs />
     </configuration>
-    <list size="5">
-      <item index="0" class="java.lang.String" itemvalue="Jest.Dialogue" />
-      <item index="1" class="java.lang.String" itemvalue="npm.test" />
-      <item index="2" class="java.lang.String" itemvalue="Jest.Dialogue.respects gotos executed on the dialogue instance" />
-      <item index="3" class="java.lang.String" itemvalue="Jest.Dialogue.resumes where it paused on receiving a response" />
-      <item index="4" class="java.lang.String" itemvalue="Jest.Dialogue.respects rollback to previous label" />
+    <list>
+      <item itemvalue="Jest.Dialogue" />
+      <item itemvalue="npm.test" />
+      <item itemvalue="Jest.Dialogue.respects gotos executed on the dialogue instance" />
+      <item itemvalue="Jest.Dialogue.resumes where it paused on receiving a response" />
+      <item itemvalue="Jest.Dialogue.respects rollback to previous label" />
     </list>
     <recent_temporary>
-      <list size="5">
-        <item index="0" class="java.lang.String" itemvalue="npm.test" />
-        <item index="1" class="java.lang.String" itemvalue="Jest.Dialogue" />
-        <item index="2" class="java.lang.String" itemvalue="Jest.Dialogue.respects rollback to previous label" />
-        <item index="3" class="java.lang.String" itemvalue="Jest.Dialogue.resumes where it paused on receiving a response" />
-        <item index="4" class="java.lang.String" itemvalue="Jest.Dialogue.respects gotos executed on the dialogue instance" />
+      <list>
+        <item itemvalue="npm.test" />
+        <item itemvalue="Jest.Dialogue" />
+        <item itemvalue="Jest.Dialogue.respects rollback to previous label" />
+        <item itemvalue="Jest.Dialogue.resumes where it paused on receiving a response" />
+        <item itemvalue="Jest.Dialogue.respects gotos executed on the dialogue instance" />
       </list>
     </recent_temporary>
-  </component>
-  <component name="ShelveChangesManager" show_recycled="false">
-    <option name="remove_strategy" value="false" />
   </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
@@ -442,6 +402,12 @@
       <workItem from="1511213568449" duration="1233000" />
       <workItem from="1511714449888" duration="3609000" />
       <workItem from="1511721926742" duration="3485000" />
+      <workItem from="1524063797197" duration="413000" />
+      <workItem from="1524220722018" duration="4076000" />
+      <workItem from="1525804759913" duration="1356000" />
+      <workItem from="1526682131030" duration="4661000" />
+      <workItem from="1526836843336" duration="1431000" />
+      <workItem from="1528902823161" duration="2024000" />
     </task>
     <servers />
   </component>
@@ -478,47 +444,46 @@
     </history-entry>
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="49515000" />
+    <option name="totallyTimeSpent" value="63476000" />
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="0" width="3000" height="2000" extended-state="6" />
-    <editor active="true" />
+    <frame x="0" y="0" width="1500" height="1000" extended-state="6" />
     <layout>
-      <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Palette&#9;" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Image Layers" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Capture Analysis" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="true" content_ui="tabs" />
-      <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32815847" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32979977" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
-      <window_info id="npm" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.123" sideWeight="0.5322709" order="2" side_tool="true" content_ui="tabs" />
-      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3293304" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
-      <window_info id="Capture Tool" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Gulp" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="4" side_tool="true" content_ui="tabs" />
-      <window_info id="TypeScript" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32969433" sideWeight="0.5" order="11" side_tool="false" content_ui="tabs" />
-      <window_info id="Designer" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.123" sideWeight="0.4677291" order="0" side_tool="false" content_ui="combo" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32976446" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Structure" active="false" anchor="left" auto_hide="true" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.14628907" sideWeight="0.49010435" order="7" side_tool="false" content_ui="tabs" x="1084" y="767" width="749" height="2779" />
-      <window_info id="Theme Preview" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.27292576" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="true" content_ui="tabs" />
-      <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
-      <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Nl-Palette" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Properties" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
-      <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
-      <window_info id="Build" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3296282" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
-      <window_info id="Dynamic Properties" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="11" side_tool="false" content_ui="tabs" />
-      <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="UI Designer" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
-      <window_info id="Coverage" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.24401042" sideWeight="0.50546116" order="12" side_tool="true" content_ui="tabs" />
-      <window_info id="Gradle" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.19804688" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
+      <window_info anchor="bottom" id="TODO" order="6" />
+      <window_info anchor="bottom" id="Messages" order="7" />
+      <window_info anchor="right" id="Palette&#9;" order="3" />
+      <window_info id="Image Layers" order="1" />
+      <window_info anchor="right" id="Capture Analysis" order="3" />
+      <window_info anchor="bottom" id="Event Log" order="8" side_tool="true" />
+      <window_info anchor="right" id="Maven Projects" order="3" />
+      <window_info active="true" anchor="bottom" id="Version Control" order="9" visible="true" weight="0.32900432" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.32792208" />
+      <window_info id="npm" order="2" sideWeight="0.5410628" side_tool="true" weight="0.20535715" />
+      <window_info anchor="bottom" id="Terminal" order="10" weight="0.32900432" />
+      <window_info id="Capture Tool" order="3" />
+      <window_info id="Gulp" order="4" side_tool="true" />
+      <window_info anchor="bottom" id="TypeScript" order="11" weight="0.32969433" />
+      <window_info id="Designer" order="5" />
+      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.4589372" visible="true" weight="0.2081044" />
+      <window_info auto_hide="true" x="1084" y="767" width="749" height="2779" id="Structure" order="7" sideWeight="0.49010435" side_tool="true" weight="0.14628907" />
+      <window_info anchor="right" id="Theme Preview" order="3" />
+      <window_info id="Favorites" order="6" side_tool="true" />
+      <window_info anchor="bottom" id="Debug" order="3" weight="0.27292576" />
+      <window_info id="UI Designer" order="3" />
+      <window_info anchor="right" id="Commander" order="0" weight="0.4" />
+      <window_info anchor="right" id="Gradle" order="9" weight="0.19804688" />
+      <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
+      <window_info id="Nl-Palette" order="7" />
+      <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
+      <window_info anchor="right" id="Dynamic Properties" order="11" />
+      <window_info anchor="bottom" id="Build" order="8" weight="0.3296282" />
+      <window_info anchor="bottom" id="Message" order="0" />
+      <window_info anchor="right" id="Properties" order="4" />
+      <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
+      <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
+      <window_info anchor="right" id="Palette" order="3" />
+      <window_info active="true" anchor="bottom" id="Find" order="1" visible="true" weight="0.32900432" />
+      <window_info anchor="right" id="Coverage" order="12" sideWeight="0.50546116" side_tool="true" visible="true" weight="0.24401042" />
     </layout>
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -547,62 +512,96 @@
       </breakpoints-dialog>
       <option name="time" value="7" />
     </breakpoint-manager>
-    <watches-manager />
   </component>
   <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/.eslintrc.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="342">
+          <caret line="19" column="1" selection-start-line="19" selection-start-column="1" selection-end-line="19" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/dialogue-builder.js">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="252">
+          <caret line="14" column="33" selection-start-line="14" selection-end-line="15" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/.babelrc">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="72">
+          <caret line="4" column="14" selection-start-line="4" selection-end-line="5" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/.vscode/launch.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="378">
+          <caret line="21" column="1" selection-start-line="21" selection-start-column="1" selection-end-line="21" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tsconfig.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="252">
+          <caret line="14" column="33" selection-start-line="14" selection-start-column="33" selection-end-line="14" selection-end-column="33" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="6660">
+          <caret line="370" column="14" lean-forward="true" selection-start-line="370" selection-start-column="14" selection-end-line="370" selection-end-column="14" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/tests.ts">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="10650">
-          <caret line="427" column="33" lean-forward="false" selection-start-line="427" selection-start-column="33" selection-end-line="427" selection-end-column="33" />
-          <folding />
+          <caret line="427" column="33" selection-start-line="427" selection-start-column="33" selection-end-line="427" selection-end-column="33" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="225">
-          <caret line="9" column="38" lean-forward="false" selection-start-line="9" selection-start-column="38" selection-end-line="9" selection-end-column="38" />
-          <folding />
+          <caret line="9" column="38" selection-start-line="9" selection-start-column="38" selection-end-line="9" selection-end-column="38" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/.eslintrc.json">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="475">
-          <caret line="19" column="1" lean-forward="false" selection-start-line="19" selection-start-column="1" selection-end-line="19" selection-end-column="1" />
-          <folding />
+          <caret line="19" column="1" selection-start-line="19" selection-start-column="1" selection-end-line="19" selection-end-column="1" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.js">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="350">
-          <caret line="14" column="33" lean-forward="false" selection-start-line="14" selection-start-column="0" selection-end-line="15" selection-end-column="0" />
-          <folding />
+          <caret line="14" column="33" selection-start-line="14" selection-end-line="15" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/.babelrc">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="100">
-          <caret line="4" column="14" lean-forward="false" selection-start-line="4" selection-start-column="0" selection-end-line="5" selection-end-column="0" />
-          <folding />
+          <caret line="4" column="14" selection-start-line="4" selection-end-line="5" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/.vscode/launch.json">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="525">
-          <caret line="21" column="1" lean-forward="false" selection-start-line="21" selection-start-column="1" selection-end-line="21" selection-end-column="1" />
-          <folding />
+          <caret line="21" column="1" selection-start-line="21" selection-start-column="1" selection-end-line="21" selection-end-column="1" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tsconfig.json">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="350">
-          <caret line="14" column="33" lean-forward="false" selection-start-line="14" selection-start-column="33" selection-end-line="14" selection-end-column="33" />
-          <folding />
+          <caret line="14" column="33" selection-start-line="14" selection-start-column="33" selection-end-line="14" selection-end-column="33" />
         </state>
       </provider>
     </entry>
@@ -610,111 +609,97 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="125">
           <caret line="5" column="24" lean-forward="true" selection-start-line="5" selection-start-column="24" selection-end-line="5" selection-end-column="24" />
-          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tests.ts">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="10650">
-          <caret line="427" column="33" lean-forward="false" selection-start-line="427" selection-start-column="33" selection-end-line="427" selection-end-column="33" />
-          <folding />
+          <caret line="427" column="33" selection-start-line="427" selection-start-column="33" selection-end-line="427" selection-end-column="33" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="225">
-          <caret line="9" column="38" lean-forward="false" selection-start-line="9" selection-start-column="38" selection-end-line="9" selection-end-column="38" />
-          <folding />
+          <caret line="9" column="38" selection-start-line="9" selection-start-column="38" selection-end-line="9" selection-end-column="38" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/.eslintrc.json">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="475">
-          <caret line="19" column="1" lean-forward="false" selection-start-line="19" selection-start-column="1" selection-end-line="19" selection-end-column="1" />
-          <folding />
+          <caret line="19" column="1" selection-start-line="19" selection-start-column="1" selection-end-line="19" selection-end-column="1" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.js">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="350">
-          <caret line="14" column="33" lean-forward="false" selection-start-line="14" selection-start-column="0" selection-end-line="15" selection-end-column="0" />
-          <folding />
+          <caret line="14" column="33" selection-start-line="14" selection-end-line="15" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/.babelrc">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="100">
-          <caret line="4" column="14" lean-forward="false" selection-start-line="4" selection-start-column="0" selection-end-line="5" selection-end-column="0" />
-          <folding />
+          <caret line="4" column="14" selection-start-line="4" selection-end-line="5" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/.vscode/launch.json">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="525">
-          <caret line="21" column="1" lean-forward="false" selection-start-line="21" selection-start-column="1" selection-end-line="21" selection-end-column="1" />
-          <folding />
+          <caret line="21" column="1" selection-start-line="21" selection-start-column="1" selection-end-line="21" selection-end-column="1" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tsconfig.json">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="350">
-          <caret line="14" column="33" lean-forward="false" selection-start-line="14" selection-start-column="33" selection-end-line="14" selection-end-column="33" />
-          <folding />
+          <caret line="14" column="33" selection-start-line="14" selection-start-column="33" selection-end-line="14" selection-end-column="33" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/package.json">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="725">
-          <caret line="29" column="4" lean-forward="false" selection-start-line="29" selection-start-column="4" selection-end-line="29" selection-end-column="4" />
-          <folding />
+          <caret line="29" column="4" selection-start-line="29" selection-start-column="4" selection-end-line="29" selection-end-column="4" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tests.ts">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="23392">
-          <caret line="689" column="87" lean-forward="false" selection-start-line="689" selection-start-column="87" selection-end-line="689" selection-end-column="87" />
-          <folding />
+          <caret line="689" column="87" selection-start-line="689" selection-start-column="87" selection-end-line="689" selection-end-column="87" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="12988">
-          <caret line="382" column="31" lean-forward="false" selection-start-line="382" selection-start-column="31" selection-end-line="382" selection-end-column="31" />
-          <folding />
+          <caret line="382" column="31" selection-start-line="382" selection-start-column="31" selection-end-line="382" selection-end-column="31" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/.vscode/launch.json">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="714">
-          <caret line="21" column="1" lean-forward="false" selection-start-line="21" selection-start-column="1" selection-end-line="21" selection-end-column="1" />
-          <folding />
+          <caret line="21" column="1" selection-start-line="21" selection-start-column="1" selection-end-line="21" selection-end-column="1" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.js">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="12410">
-          <caret line="365" column="41" lean-forward="false" selection-start-line="365" selection-start-column="41" selection-end-line="365" selection-end-column="41" />
-          <folding />
+          <caret line="365" column="41" selection-start-line="365" selection-start-column="41" selection-end-line="365" selection-end-column="41" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tsconfig.json">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="476">
-          <caret line="14" column="33" lean-forward="false" selection-start-line="14" selection-start-column="33" selection-end-line="14" selection-end-column="33" />
-          <folding />
+          <caret line="14" column="33" selection-start-line="14" selection-start-column="33" selection-end-line="14" selection-end-column="33" />
         </state>
       </provider>
     </entry>
@@ -722,23 +707,20 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1360">
           <caret line="40" column="18" lean-forward="true" selection-start-line="40" selection-start-column="18" selection-end-line="40" selection-end-column="18" />
-          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tests.ts">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="4590">
-          <caret line="136" column="9" lean-forward="false" selection-start-line="136" selection-start-column="9" selection-end-line="136" selection-end-column="9" />
-          <folding />
+          <caret line="136" column="9" selection-start-line="136" selection-start-column="9" selection-end-line="136" selection-end-column="9" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tsconfig.json">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="476">
-          <caret line="14" column="33" lean-forward="false" selection-start-line="14" selection-start-column="33" selection-end-line="14" selection-end-column="33" />
-          <folding />
+          <caret line="14" column="33" selection-start-line="14" selection-start-column="33" selection-end-line="14" selection-end-column="33" />
         </state>
       </provider>
     </entry>
@@ -746,215 +728,149 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="5474">
           <caret line="161" column="11" lean-forward="true" selection-start-line="161" selection-start-column="11" selection-end-line="161" selection-end-column="11" />
-          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tests.ts">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="4624">
-          <caret line="136" column="9" lean-forward="false" selection-start-line="136" selection-start-column="9" selection-end-line="136" selection-end-column="9" />
-          <folding />
+          <caret line="136" column="9" selection-start-line="136" selection-start-column="9" selection-end-line="136" selection-end-column="9" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tsconfig.json">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="476">
-          <caret line="14" column="33" lean-forward="false" selection-start-line="14" selection-start-column="33" selection-end-line="14" selection-end-column="33" />
-          <folding />
+          <caret line="14" column="33" selection-start-line="14" selection-start-column="33" selection-end-line="14" selection-end-column="33" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="5372">
-          <caret line="158" column="20" lean-forward="false" selection-start-line="158" selection-start-column="20" selection-end-line="158" selection-end-column="20" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tests.ts">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
+          <caret line="158" column="20" selection-start-line="158" selection-start-column="20" selection-end-line="158" selection-end-column="20" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="10030">
-          <caret line="295" column="21" lean-forward="false" selection-start-line="295" selection-start-column="21" selection-end-line="295" selection-end-column="21" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tests.ts">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
+          <caret line="295" column="21" selection-start-line="295" selection-start-column="21" selection-end-line="295" selection-end-column="21" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="6528">
-          <caret line="192" column="24" lean-forward="false" selection-start-line="192" selection-start-column="24" selection-end-line="192" selection-end-column="24" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tests.ts">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
+          <caret line="192" column="24" selection-start-line="192" selection-start-column="24" selection-end-line="192" selection-end-column="24" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="550">
-          <caret line="22" column="30" lean-forward="false" selection-start-line="22" selection-start-column="0" selection-end-line="23" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tests.ts">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
+          <caret line="22" column="30" selection-start-line="22" selection-end-line="23" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="2525">
-          <caret line="101" column="62" lean-forward="false" selection-start-line="101" selection-start-column="62" selection-end-line="101" selection-end-column="62" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tests.ts">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
+          <caret line="101" column="62" selection-start-line="101" selection-start-column="62" selection-end-line="101" selection-end-column="62" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="2525">
-          <caret line="101" column="62" lean-forward="false" selection-start-line="101" selection-start-column="62" selection-end-line="101" selection-end-column="62" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tests.ts">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
+          <caret line="101" column="62" selection-start-line="101" selection-start-column="62" selection-end-line="101" selection-end-column="62" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="2525">
-          <caret line="101" column="62" lean-forward="false" selection-start-line="101" selection-start-column="62" selection-end-line="101" selection-end-column="62" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tests.ts">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
+          <caret line="101" column="62" selection-start-line="101" selection-start-column="62" selection-end-line="101" selection-end-column="62" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="2565">
-          <caret line="95" column="0" lean-forward="false" selection-start-line="95" selection-start-column="0" selection-end-line="95" selection-end-column="0" />
-          <folding />
+          <caret line="95" selection-start-line="95" selection-end-line="95" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/.vscode/launch.json">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="714">
-          <caret line="21" column="1" lean-forward="false" selection-start-line="21" selection-start-column="1" selection-end-line="21" selection-end-column="1" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tests.ts">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="14484">
-          <caret line="427" column="33" lean-forward="false" selection-start-line="427" selection-start-column="33" selection-end-line="427" selection-end-column="33" />
-          <folding />
+        <state relative-caret-position="378">
+          <caret line="21" column="1" selection-start-line="21" selection-start-column="1" selection-end-line="21" selection-end-column="1" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/.babelrc">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="136">
-          <caret line="4" column="14" lean-forward="false" selection-start-line="4" selection-start-column="0" selection-end-line="5" selection-end-column="0" />
-          <folding />
+        <state relative-caret-position="72">
+          <caret line="4" column="14" selection-start-line="4" selection-end-line="5" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/.eslintrc.json">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="646">
-          <caret line="19" column="1" lean-forward="false" selection-start-line="19" selection-start-column="1" selection-end-line="19" selection-end-column="1" />
-          <folding />
+        <state relative-caret-position="342">
+          <caret line="19" column="1" selection-start-line="19" selection-start-column="1" selection-end-line="19" selection-end-column="1" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="476">
-          <caret line="14" column="33" lean-forward="false" selection-start-line="14" selection-start-column="0" selection-end-line="15" selection-end-column="0" />
-          <folding />
+        <state relative-caret-position="252">
+          <caret line="14" column="33" selection-start-line="14" selection-end-line="15" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tests.ts">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="7416">
+          <caret line="413" selection-start-line="411" selection-end-line="413" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tsconfig.json">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="476">
-          <caret line="14" column="33" lean-forward="false" selection-start-line="14" selection-start-column="33" selection-end-line="14" selection-end-column="33" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/package.json">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="170">
-          <caret line="5" column="24" lean-forward="false" selection-start-line="5" selection-start-column="24" selection-end-line="5" selection-end-column="24" />
-          <folding />
+        <state relative-caret-position="252">
+          <caret line="14" column="33" selection-start-line="14" selection-start-column="33" selection-end-line="14" selection-end-column="33" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/index.d.ts">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="103">
-          <caret line="110" column="32" lean-forward="false" selection-start-line="110" selection-start-column="16" selection-end-line="110" selection-end-column="32" />
-          <folding />
+        <state relative-caret-position="244">
+          <caret line="113" column="51" selection-start-line="113" selection-start-column="51" selection-end-line="113" selection-end-column="51" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/package.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="198">
+          <caret line="11" column="54" selection-start-line="11" selection-start-column="54" selection-end-line="11" selection-end-column="54" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/dialogue-builder.d.ts">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="198">
+          <caret line="62" column="13" selection-start-line="62" selection-start-column="13" selection-end-line="62" selection-end-column="13" />
+          <folding>
+            <element signature="e#0#24#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="544">
-          <caret line="136" column="1" lean-forward="true" selection-start-line="136" selection-start-column="1" selection-end-line="136" selection-end-column="1" />
-          <folding />
+        <state relative-caret-position="392">
+          <caret line="217" column="53" selection-start-line="217" selection-start-column="53" selection-end-line="217" selection-end-column="53" />
         </state>
       </provider>
     </entry>

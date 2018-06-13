@@ -54,10 +54,13 @@ export declare class TemplateBuilder {
     constructor(identifier: string, builder: (script: string) => BaseTemplate);
     build(script: string): BaseTemplate;
 }
-export declare type ButtonHandler = any;
+export declare type ButtonHandler = {
+    [title: string]: URLButton | (() => Goto | void | Promise<Goto | void>);
+};
 export interface URLButton {
     url: string;
     height?: 'compact' | 'tall' | 'full';
+    shareable?: boolean;
 }
 export interface Bubble {
     title: string;

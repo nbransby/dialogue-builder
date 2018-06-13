@@ -82,7 +82,7 @@ declare module "claudia-bot-builder" {
 
             class Button extends BaseTemplate {
                 constructor(text: string)
-                addButton(title: string, value: string): this
+                addButton(title: string, value: string, options?: object): this
                 addShareButton(shareContent?: string): this
             }
 
@@ -108,10 +108,10 @@ declare module "claudia-bot-builder" {
                 constructor(topElementStyle: 'large'|'compact')
                 bubbles: Array<{ image_url?: string }>
                 addBubble(title: string, subtitle?: string): this
-                addDefaultAction(url: string): this
+                addDefaultAction(url: string, options?: object): this
                 addImage(url: string): this
-                addButton(title: string, value: string): this
-                addListButton(title: string, value: string): this
+                addButton(title: string, value: string, options?: object): this
+                addListButton(title: string, value: string, options?: object): this
                 getFirstBubble(): string 
                 getLastBubble(): { title: string, subtitle: string } 
             }
@@ -124,7 +124,7 @@ declare module "claudia-bot-builder" {
                 getLastBubble(): { title: string, subtitle?: string, image_url?: string }
                 addUrl(url: string): this
                 addImage(url: string): this
-                addButton(title: string, value: string): this
+                addButton(title: string, value: string, options?: object): this
                 addShareButton(shareContent?: string): this
             }
 
