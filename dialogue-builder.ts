@@ -167,8 +167,8 @@ export function buttons(id: string, text: string, handler: ButtonHandler): Templ
 
 function toOptions(button: URLButton | Function): undefined | object {
     return typeof button === "function" ? undefined : {
-        webview_height_ratio: button.height,
-        webview_share_button: button.shareable
+        ...button.height ? { webview_height_ratio: button.height } : {},
+        ...button.shareable ? { webview_share_button: button.shareable } : {}
     }
 }
 

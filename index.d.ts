@@ -228,7 +228,7 @@ declare module "dialogue-builder" {
     export function file(template: TemplateStringsArray, ...substitutions: any[]): Attachment;
     export type ButtonHandler = {
         [title: string]: URLButton | (() => Goto | void | Promise<Goto | void>);
-    };
+    } | any;
     export interface URLButton {
         url: string;
         height?: 'compact' | 'tall' | 'full';

@@ -3,6 +3,7 @@
   <component name="ChangeListManager">
     <list default="true" id="f6cbb216-0b90-4665-a04b-3309ed06ebe4" name="Default" comment="">
       <change beforePath="$PROJECT_DIR$/dialogue-builder.iws" beforeDir="false" afterPath="$PROJECT_DIR$/dialogue-builder.iws" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dialogue-builder.ts" beforeDir="false" afterPath="$PROJECT_DIR$/dialogue-builder.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/index.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/index.d.ts" afterDir="false" />
     </list>
     <ignored path="$PROJECT_DIR$/out/" />
@@ -25,8 +26,8 @@
       <file leaf-file-name="tests.ts" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/tests.ts">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="7416">
-              <caret line="413" selection-start-line="411" selection-end-line="413" />
+            <state relative-caret-position="306">
+              <caret line="700" column="21" selection-start-line="700" selection-start-column="21" selection-end-line="700" selection-end-column="21" />
             </state>
           </provider>
         </entry>
@@ -40,20 +41,20 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="dialogue-builder.ts" pinned="false" current-in-tab="false">
+      <file leaf-file-name="dialogue-builder.ts" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="554">
-              <caret line="217" column="53" selection-start-line="217" selection-start-column="53" selection-end-line="217" selection-end-column="53" />
+            <state relative-caret-position="714">
+              <caret line="169" column="28" lean-forward="true" selection-start-line="169" selection-start-column="28" selection-end-line="169" selection-end-column="28" />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="index.d.ts" pinned="false" current-in-tab="true">
+      <file leaf-file-name="index.d.ts" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/index.d.ts">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="234">
-              <caret line="231" selection-start-line="231" selection-end-line="231" />
+            <state relative-caret-position="1208">
+              <caret line="228" column="10" selection-start-line="228" selection-start-column="10" selection-end-line="228" selection-end-column="10" />
             </state>
           </provider>
         </entry>
@@ -61,7 +62,7 @@
       <file leaf-file-name="dialogue-builder.d.ts" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/dialogue-builder.d.ts">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="126">
+            <state relative-caret-position="954">
               <caret line="59" selection-start-line="56" selection-end-line="59" />
               <folding>
                 <element signature="e#0#24#0" expanded="true" />
@@ -143,13 +144,13 @@
       <list>
         <option value="$PROJECT_DIR$/tsconfig.json" />
         <option value="$PROJECT_DIR$/.vscode/launch.json" />
-        <option value="$PROJECT_DIR$/tests.ts" />
         <option value="$PROJECT_DIR$/.babelrc" />
         <option value="$PROJECT_DIR$/.eslintrc.json" />
         <option value="$PROJECT_DIR$/dialogue-builder.d.ts" />
         <option value="$PROJECT_DIR$/package.json" />
-        <option value="$PROJECT_DIR$/dialogue-builder.ts" />
         <option value="$PROJECT_DIR$/index.d.ts" />
+        <option value="$PROJECT_DIR$/tests.ts" />
+        <option value="$PROJECT_DIR$/dialogue-builder.ts" />
       </list>
     </option>
   </component>
@@ -189,10 +190,8 @@
     <handled-path value="$PROJECT_DIR$/node_modules" />
   </component>
   <component name="ProjectFrameBounds" extendedState="6" fullScreen="true">
-    <option name="x" value="-10" />
-    <option name="y" value="2" />
-    <option name="width" value="3020" />
-    <option name="height" value="1930" />
+    <option name="width" value="3000" />
+    <option name="height" value="2000" />
   </component>
   <component name="ProjectView">
     <navigator proportions="" version="1">
@@ -211,8 +210,8 @@
           <select />
         </subPane>
       </pane>
-      <pane id="PackagesPane" />
       <pane id="AndroidView" />
+      <pane id="PackagesPane" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -404,14 +403,20 @@
       <workItem from="1525804759913" duration="1356000" />
       <workItem from="1526682131030" duration="4661000" />
       <workItem from="1526836843336" duration="1431000" />
-      <workItem from="1528902823161" duration="2647000" />
+      <workItem from="1528902823161" duration="3230000" />
+      <workItem from="1528968517690" duration="858000" />
     </task>
+    <task id="LOCAL-00001" summary="update index.d.ts">
+      <created>1528917220544</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1528917220544</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TestHistory">
-    <history-entry file="Dialogue - 2017.11.06 at 12h 44m 58s.xml">
-      <configuration name="Dialogue" configurationId="JavaScriptTestRunnerJest" />
-    </history-entry>
     <history-entry file="Dialogue - 2017.11.06 at 13h 04m 22s.xml">
       <configuration name="Dialogue" configurationId="JavaScriptTestRunnerJest" />
     </history-entry>
@@ -439,36 +444,39 @@
     <history-entry file="Dialogue_resumes_where_it_paused_on_receiving_a_response - 2017.11.06 at 12h 44m 44s.xml">
       <configuration name="Dialogue.resumes where it paused on receiving a response" configurationId="JavaScriptTestRunnerJest" />
     </history-entry>
+    <history-entry file="Dialogue - 2018.06.13 at 20h 12m 25s.xml">
+      <configuration name="Dialogue" configurationId="JavaScriptTestRunnerJest" />
+    </history-entry>
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="64099000" />
+    <option name="totallyTimeSpent" value="65540000" />
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="0" width="1500" height="1000" extended-state="6" />
+    <frame x="0" y="0" width="3840" height="2160" extended-state="6" />
     <editor active="true" />
     <layout>
       <window_info anchor="bottom" id="TODO" order="6" />
-      <window_info anchor="bottom" id="Messages" order="7" />
       <window_info anchor="right" id="Palette&#9;" order="3" />
       <window_info id="Image Layers" order="1" />
       <window_info anchor="right" id="Capture Analysis" order="3" />
       <window_info anchor="bottom" id="Event Log" order="8" side_tool="true" />
       <window_info anchor="right" id="Maven Projects" order="3" />
-      <window_info active="true" anchor="bottom" id="Version Control" order="9" visible="true" weight="0.32900432" />
-      <window_info anchor="bottom" id="Run" order="2" weight="0.32792208" />
+      <window_info anchor="bottom" id="Version Control" order="9" weight="0.32900432" />
       <window_info id="npm" order="2" sideWeight="0.5410628" side_tool="true" weight="0.20535715" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.32792208" />
       <window_info anchor="bottom" id="Terminal" order="10" weight="0.32900432" />
       <window_info id="Capture Tool" order="3" />
       <window_info id="Gulp" order="4" side_tool="true" />
       <window_info anchor="bottom" id="TypeScript" order="11" weight="0.32969433" />
       <window_info id="Designer" order="5" />
-      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.4589372" visible="true" weight="0.2081044" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" sideWeight="0.4589372" visible="true" weight="0.20916754" />
       <window_info auto_hide="true" x="1084" y="767" width="749" height="2779" id="Structure" order="7" sideWeight="0.49010435" side_tool="true" weight="0.14628907" />
       <window_info anchor="right" id="Theme Preview" order="3" />
       <window_info id="Favorites" order="6" side_tool="true" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.27292576" />
       <window_info id="UI Designer" order="3" />
       <window_info anchor="right" id="Commander" order="0" weight="0.4" />
+      <window_info anchor="bottom" id="Messages" order="7" />
       <window_info anchor="right" id="Gradle" order="9" weight="0.19804688" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info id="Nl-Palette" order="7" />
@@ -502,6 +510,10 @@
   </component>
   <component name="VcsContentAnnotationSettings">
     <option name="myLimit" value="2678400000" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="update index.d.ts" />
+    <option name="LAST_COMMIT_MESSAGE" value="update index.d.ts" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -827,13 +839,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/tests.ts">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="7416">
-          <caret line="413" selection-start-line="411" selection-end-line="413" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/tsconfig.json">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="252">
@@ -848,16 +853,9 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="554">
-          <caret line="217" column="53" selection-start-line="217" selection-start-column="53" selection-end-line="217" selection-end-column="53" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.d.ts">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="126">
+        <state relative-caret-position="954">
           <caret line="59" selection-start-line="56" selection-end-line="59" />
           <folding>
             <element signature="e#0#24#0" expanded="true" />
@@ -865,10 +863,24 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/tests.ts">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="306">
+          <caret line="700" column="21" selection-start-line="700" selection-start-column="21" selection-end-line="700" selection-end-column="21" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/index.d.ts">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="234">
-          <caret line="231" selection-start-line="231" selection-end-line="231" />
+        <state relative-caret-position="1208">
+          <caret line="228" column="10" selection-start-line="228" selection-start-column="10" selection-end-line="228" selection-end-column="10" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="714">
+          <caret line="169" column="28" lean-forward="true" selection-start-line="169" selection-start-column="28" selection-end-line="169" selection-end-column="28" />
         </state>
       </provider>
     </entry>
