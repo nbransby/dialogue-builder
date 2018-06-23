@@ -44,8 +44,8 @@
       <file leaf-file-name="dialogue-builder.ts" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="714">
-              <caret line="169" column="28" lean-forward="true" selection-start-line="169" selection-start-column="28" selection-end-line="169" selection-end-column="28" />
+            <state relative-caret-position="460">
+              <caret line="157" column="122" lean-forward="true" selection-start-line="157" selection-start-column="122" selection-end-line="157" selection-end-column="122" />
             </state>
           </provider>
         </entry>
@@ -53,8 +53,8 @@
       <file leaf-file-name="index.d.ts" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/index.d.ts">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1208">
-              <caret line="228" column="10" selection-start-line="228" selection-start-column="10" selection-end-line="228" selection-end-column="10" />
+            <state relative-caret-position="973">
+              <caret line="113" column="66" lean-forward="true" selection-start-line="113" selection-start-column="66" selection-end-line="113" selection-end-column="66" />
             </state>
           </provider>
         </entry>
@@ -83,8 +83,17 @@
       <file leaf-file-name="dialogue-builder.js" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/dialogue-builder.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="252">
-              <caret line="14" column="33" selection-start-line="14" selection-end-line="15" />
+            <state relative-caret-position="442">
+              <caret line="138" column="62" lean-forward="true" selection-start-line="138" selection-start-column="62" selection-end-line="138" selection-end-column="62" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="format-message.js" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/node_modules/claudia-bot-builder/lib/facebook/format-message.js">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="-252">
+              <caret line="802" column="13" lean-forward="true" selection-start-line="802" selection-start-column="13" selection-end-line="802" selection-end-column="13" />
             </state>
           </provider>
         </entry>
@@ -94,15 +103,6 @@
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="72">
               <caret line="4" column="14" selection-start-line="4" selection-end-line="5" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="launch.json" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/.vscode/launch.json">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="378">
-              <caret line="21" column="1" selection-start-line="21" selection-start-column="1" selection-end-line="21" selection-end-column="1" />
             </state>
           </provider>
         </entry>
@@ -134,6 +134,8 @@
       <find>list(</find>
       <find>compact</find>
       <find>Button(</find>
+      <find>t</find>
+      <find>toO</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -148,8 +150,8 @@
         <option value="$PROJECT_DIR$/.eslintrc.json" />
         <option value="$PROJECT_DIR$/dialogue-builder.d.ts" />
         <option value="$PROJECT_DIR$/package.json" />
-        <option value="$PROJECT_DIR$/index.d.ts" />
         <option value="$PROJECT_DIR$/tests.ts" />
+        <option value="$PROJECT_DIR$/index.d.ts" />
         <option value="$PROJECT_DIR$/dialogue-builder.ts" />
       </list>
     </option>
@@ -190,8 +192,10 @@
     <handled-path value="$PROJECT_DIR$/node_modules" />
   </component>
   <component name="ProjectFrameBounds" extendedState="6" fullScreen="true">
-    <option name="width" value="3000" />
-    <option name="height" value="2000" />
+    <option name="x" value="-12" />
+    <option name="y" value="-12" />
+    <option name="width" value="3026" />
+    <option name="height" value="1946" />
   </component>
   <component name="ProjectView">
     <navigator proportions="" version="1">
@@ -205,6 +209,11 @@
             <path>
               <item name="dialogue-builder" type="b2602c69:ProjectViewProjectNode" />
               <item name="dialogue-builder" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="dialogue-builder" type="b2602c69:ProjectViewProjectNode" />
+              <item name="dialogue-builder" type="462c0819:PsiDirectoryNode" />
+              <item name="dialogue-builder.ts" type="620a8d5e:NestingTreeNode" />
             </path>
           </expand>
           <select />
@@ -237,7 +246,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Jest.Dialogue">
+  <component name="RunManager" selected="npm.test">
     <configuration default="true" type="Applet" factoryName="Applet">
       <option name="POLICY_FILE" value="$APPLICATION_HOME_DIR$/bin/appletviewer.policy" />
     </configuration>
@@ -365,8 +374,8 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Jest.Dialogue" />
         <item itemvalue="npm.test" />
+        <item itemvalue="Jest.Dialogue" />
         <item itemvalue="Jest.Dialogue.respects rollback to previous label" />
         <item itemvalue="Jest.Dialogue.resumes where it paused on receiving a response" />
         <item itemvalue="Jest.Dialogue.respects gotos executed on the dialogue instance" />
@@ -404,7 +413,7 @@
       <workItem from="1526682131030" duration="4661000" />
       <workItem from="1526836843336" duration="1431000" />
       <workItem from="1528902823161" duration="3230000" />
-      <workItem from="1528968517690" duration="858000" />
+      <workItem from="1528968517690" duration="7181000" />
     </task>
     <task id="LOCAL-00001" summary="update index.d.ts">
       <created>1528917220544</created>
@@ -413,7 +422,14 @@
       <option name="project" value="LOCAL" />
       <updated>1528917220544</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="only set weview options when specified">
+      <created>1528969559412</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1528969559412</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TestHistory">
@@ -449,34 +465,34 @@
     </history-entry>
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="65540000" />
+    <option name="totallyTimeSpent" value="71863000" />
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="0" width="3840" height="2160" extended-state="6" />
+    <frame x="0" y="0" width="1500" height="1000" extended-state="6" />
     <editor active="true" />
     <layout>
       <window_info anchor="bottom" id="TODO" order="6" />
+      <window_info anchor="bottom" id="Messages" order="7" />
       <window_info anchor="right" id="Palette&#9;" order="3" />
       <window_info id="Image Layers" order="1" />
       <window_info anchor="right" id="Capture Analysis" order="3" />
       <window_info anchor="bottom" id="Event Log" order="8" side_tool="true" />
       <window_info anchor="right" id="Maven Projects" order="3" />
-      <window_info anchor="bottom" id="Version Control" order="9" weight="0.32900432" />
+      <window_info anchor="bottom" id="Version Control" order="9" weight="0.32869482" />
       <window_info id="npm" order="2" sideWeight="0.5410628" side_tool="true" weight="0.20535715" />
-      <window_info anchor="bottom" id="Run" order="2" weight="0.32792208" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.27597404" />
       <window_info anchor="bottom" id="Terminal" order="10" weight="0.32900432" />
       <window_info id="Capture Tool" order="3" />
       <window_info id="Gulp" order="4" side_tool="true" />
       <window_info anchor="bottom" id="TypeScript" order="11" weight="0.32969433" />
       <window_info id="Designer" order="5" />
-      <window_info active="true" content_ui="combo" id="Project" order="0" sideWeight="0.4589372" visible="true" weight="0.20916754" />
+      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.4589372" visible="true" weight="0.16552198" />
       <window_info auto_hide="true" x="1084" y="767" width="749" height="2779" id="Structure" order="7" sideWeight="0.49010435" side_tool="true" weight="0.14628907" />
       <window_info anchor="right" id="Theme Preview" order="3" />
       <window_info id="Favorites" order="6" side_tool="true" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.27292576" />
       <window_info id="UI Designer" order="3" />
       <window_info anchor="right" id="Commander" order="0" weight="0.4" />
-      <window_info anchor="bottom" id="Messages" order="7" />
       <window_info anchor="right" id="Gradle" order="9" weight="0.19804688" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info id="Nl-Palette" order="7" />
@@ -512,8 +528,11 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
+    <option name="CHECK_CODE_SMELLS_BEFORE_PROJECT_COMMIT" value="false" />
+    <option name="CHECK_NEW_TODO" value="false" />
     <MESSAGE value="update index.d.ts" />
-    <option name="LAST_COMMIT_MESSAGE" value="update index.d.ts" />
+    <MESSAGE value="only set weview options when specified" />
+    <option name="LAST_COMMIT_MESSAGE" value="only set weview options when specified" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -524,13 +543,6 @@
     </breakpoint-manager>
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/.eslintrc.json">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="342">
-          <caret line="19" column="1" selection-start-line="19" selection-start-column="1" selection-end-line="19" selection-end-column="1" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.js">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="252">
@@ -825,20 +837,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/.eslintrc.json">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="342">
-          <caret line="19" column="1" selection-start-line="19" selection-start-column="1" selection-end-line="19" selection-end-column="1" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/dialogue-builder.js">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="252">
-          <caret line="14" column="33" selection-start-line="14" selection-end-line="15" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/tsconfig.json">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="252">
@@ -870,17 +868,38 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/.eslintrc.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="342">
+          <caret line="19" column="1" selection-start-line="19" selection-start-column="1" selection-end-line="19" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/dialogue-builder.js">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="442">
+          <caret line="138" column="62" lean-forward="true" selection-start-line="138" selection-start-column="62" selection-end-line="138" selection-end-column="62" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/node_modules/claudia-bot-builder/lib/facebook/format-message.js">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-252">
+          <caret line="802" column="13" lean-forward="true" selection-start-line="802" selection-start-column="13" selection-end-line="802" selection-end-column="13" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/index.d.ts">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1208">
-          <caret line="228" column="10" selection-start-line="228" selection-start-column="10" selection-end-line="228" selection-end-column="10" />
+        <state relative-caret-position="973">
+          <caret line="113" column="66" lean-forward="true" selection-start-line="113" selection-start-column="66" selection-end-line="113" selection-end-column="66" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/dialogue-builder.ts">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="714">
-          <caret line="169" column="28" lean-forward="true" selection-start-line="169" selection-start-column="28" selection-end-line="169" selection-end-column="28" />
+        <state relative-caret-position="460">
+          <caret line="157" column="122" lean-forward="true" selection-start-line="157" selection-start-column="122" selection-end-line="157" selection-end-column="122" />
         </state>
       </provider>
     </entry>

@@ -110,8 +110,8 @@ declare module "claudia-bot-builder" {
                 addBubble(title: string, subtitle?: string): this
                 addDefaultAction(url: string, options?: object): this
                 addImage(url: string): this
-                addButton(title: string, value: string, options?: object): this
-                addListButton(title: string, value: string, options?: object): this
+                addButton(title: string, value: string, type?: string, options?: object): this
+                addListButton(title: string, value: string, type?: string, options?: object): this
                 getFirstBubble(): string 
                 getLastBubble(): { title: string, subtitle: string } 
             }

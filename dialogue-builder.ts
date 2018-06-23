@@ -167,8 +167,8 @@ export function buttons(id: string, text: string, handler: ButtonHandler): Templ
 
 function toOptions(button: URLButton | Function): undefined | object {
     return typeof button === "function" ? undefined : {
-        ...button.height ? { webview_height_ratio: button.height } : {},
-        ...button.shareable ? { webview_share_button: button.shareable } : {}
+        webview_height_ratio: button.height,
+        webview_share_button: button.shareable ? undefined : 'hide'
     }
 }
 
@@ -183,11 +183,11 @@ export function list(id: string, type: 'compact' | 'large', bubbles: Bubble[], h
                 list.addDefaultAction(typeof button !== "function" ? button.url : `${script}::default action of ${ordinals[index]} bubble of list '${id}'`, toOptions(button))
             }
             bubble.buttons && Object.entries(bubble.buttons).forEach(([k, v]) =>
-                list.addButton(k, typeof v !== "function" ? v.url : `${script}::'${k}' button in ${ordinals[index]} bubble of list '${script}::${id}'`, toOptions(v))
+                list.addButton(k, typeof v !== "function" ? v.url : `${script}::'${k}' button in ${ordinals[index]} bubble of list '${script}::${id}'`, undefined, toOptions(v))
             );
         });
         handler && Object.entries(handler).forEach(([k, v]) =>
-            list.addListButton(k, typeof v !== "function" ? v.url : `${script}::'${k}' button in list '${id}'`, toOptions(v))
+            list.addListButton(k, typeof v !== "function" ? v.url : `${script}::'${k}' button in list '${id}'`, undefined, toOptions(v))
         );
         return list;
     });
