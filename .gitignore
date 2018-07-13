@@ -3,6 +3,7 @@
 # transpiled js
 *.js
 *.js.map
+!dialogue-builder.*
 
 # Logs
 logs
