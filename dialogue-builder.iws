@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="f6cbb216-0b90-4665-a04b-3309ed06ebe4" name="Default" comment="add a prepare script">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+    <list default="true" id="f6cbb216-0b90-4665-a04b-3309ed06ebe4" name="Default" comment="">
       <change beforePath="$PROJECT_DIR$/dialogue-builder.iws" beforeDir="false" afterPath="$PROJECT_DIR$/dialogue-builder.iws" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
     </list>
     <ignored path="$PROJECT_DIR$/out/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -31,11 +31,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="package.json" pinned="false" current-in-tab="false">
+      <file leaf-file-name="package.json" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/package.json">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="396">
-              <caret line="32" column="51" selection-start-line="32" selection-start-column="51" selection-end-line="32" selection-end-column="51" />
+            <state relative-caret-position="378">
+              <caret line="31" selection-start-line="31" selection-end-line="31" />
             </state>
           </provider>
         </entry>
@@ -49,7 +49,7 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name=".gitignore" pinned="false" current-in-tab="true">
+      <file leaf-file-name=".gitignore" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/.gitignore">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="72">
@@ -152,8 +152,8 @@
         <option value="$PROJECT_DIR$/tests.ts" />
         <option value="$PROJECT_DIR$/index.d.ts" />
         <option value="$PROJECT_DIR$/dialogue-builder.ts" />
-        <option value="$PROJECT_DIR$/package.json" />
         <option value="$PROJECT_DIR$/.gitignore" />
+        <option value="$PROJECT_DIR$/package.json" />
       </list>
     </option>
   </component>
@@ -410,7 +410,7 @@
       <workItem from="1528968517690" duration="7181000" />
       <workItem from="1530120707508" duration="709000" />
       <workItem from="1531210790503" duration="602000" />
-      <workItem from="1531426445281" duration="5168000" />
+      <workItem from="1531426445281" duration="5218000" />
     </task>
     <task id="LOCAL-00001" summary="update index.d.ts">
       <created>1528917220544</created>
@@ -433,7 +433,14 @@
       <option name="project" value="LOCAL" />
       <updated>1531466717962</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="include js">
+      <created>1531471045247</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1531471045247</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TestHistory">
@@ -469,7 +476,7 @@
     </history-entry>
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="78342000" />
+    <option name="totallyTimeSpent" value="78392000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="0" width="1500" height="1000" extended-state="6" />
@@ -537,7 +544,8 @@
     <MESSAGE value="update index.d.ts" />
     <MESSAGE value="only set weview options when specified" />
     <MESSAGE value="add a prepare script" />
-    <option name="LAST_COMMIT_MESSAGE" value="add a prepare script" />
+    <MESSAGE value="include js" />
+    <option name="LAST_COMMIT_MESSAGE" value="include js" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -887,13 +895,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/package.json">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="396">
-          <caret line="32" column="51" selection-start-line="32" selection-start-column="51" selection-end-line="32" selection-end-column="51" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/.npmignore">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="216">
@@ -905,6 +906,13 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="72">
           <caret line="4" column="8" selection-start-line="4" selection-start-column="8" selection-end-line="4" selection-end-column="8" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/package.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="378">
+          <caret line="31" selection-start-line="31" selection-end-line="31" />
         </state>
       </provider>
     </entry>

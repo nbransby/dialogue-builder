@@ -29,7 +29,6 @@
     "typescript": "^2.6.1"
   },
   "scripts": {
-    "prepare": "tsc && babel dialogue-builder.js -o dialogue-builder.js",
     "pretest": "tsc && babel dialogue-builder.js -o dialogue-builder.js && babel tests.js -o tests.js && eslint dialogue-builder.js tests.js",
     "test": "jest",
     "posttest": "nyc report --reporter=json && codecov -f coverage/*.json"
